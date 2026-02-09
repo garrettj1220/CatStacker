@@ -35,6 +35,14 @@
       <div id="level-overlay" class="level-overlay hidden">
         <div class="level-text">Level <span id="overlay-level">1</span></div>
       </div>
+      <div id="enemy-intro" class="overlay hidden">
+        <div class="panel enemy-panel">
+          <img id="enemy-intro-image" class="enemy-image" alt="" />
+          <h2 id="enemy-intro-title">Enemy</h2>
+          <p id="enemy-intro-text">Description</p>
+          <button id="enemy-intro-button" type="button">Sounds good</button>
+        </div>
+      </div>
       <div id="game-over" class="overlay hidden">
         <div class="panel">
           <h1>Game Over</h1>
@@ -42,6 +50,13 @@
           <p>Height reached: <span id="final-height">0</span> cats</p>
           <p>Score: <span id="final-score">0</span></p>
           <button id="play-again" type="button">Play Again</button>
+        </div>
+      </div>
+      <div id="victory-screen" class="overlay hidden">
+        <div class="panel victory-panel">
+          <h1>congratulations you beat cat stacker</h1>
+          <div id="victory-gallery" class="victory-gallery"></div>
+          <button id="victory-play-again" type="button">Play Again</button>
         </div>
       </div>
       <div class="hud">
