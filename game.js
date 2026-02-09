@@ -1403,8 +1403,16 @@ function loop(timestamp) {
   const clampedDelta = clamp(rawDelta, MIN_FRAME_DELTA_MS, MAX_FRAME_DELTA_MS);
   const deltaRatio = clamp(clampedDelta / GAME_FRAME_DELTA_MS, MIN_DELTA_RATIO, MAX_DELTA_RATIO);
   lastTimestamp = timestamp;
-  update(deltaRatio, clampedDelta);
-  render();
+  try {
+    update(deltaRatio, clampedDelta);
+  } catch (error) {
+    console.error("update loop error", error);
+  }
+  try {
+    render();
+  } catch (error) {
+    console.error("render loop error", error);
+  }
   requestAnimationFrame(loop);
 }
 
