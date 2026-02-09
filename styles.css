@@ -116,6 +116,24 @@ canvas {
   background: rgba(4, 4, 12, 0.9);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
 }
+.main-menu-headline {
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.menu-tagline {
+  letter-spacing: 0.25em;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+.menu-lede {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: "Fraunces", "Space Grotesk", serif;
+}
 .main-menu h1 {
   font-size: 3rem;
   letter-spacing: 0.4em;
@@ -174,6 +192,13 @@ canvas {
 .best-scores {
   font-size: 0.85rem;
   letter-spacing: 0.1em;
+}
+.menu-credit {
+  margin-top: 22px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4em;
+  color: #8c8f9d;
 }
 .overlay-actions {
   display: flex;
