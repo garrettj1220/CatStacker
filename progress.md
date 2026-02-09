@@ -85,3 +85,9 @@ Original prompt: ok build it the first version! use our web game building skill
 ## Tests (main menu binding reliability)
 - `node /Users/garrettjohnson/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#mode-survival" --actions-file /Users/garrettjohnson/.codex/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests` (passes; module warning is expected and the run captures the updated start flow in `CodexOutput/tests`).
 - `node /Users/garrettjohnson/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#mode-checkpoint" --actions-file /Users/garrettjohnson/.codex/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests` (passes; same warning appears, but the checkpoint button confirms the menu can transition into that mode as well).
+
+## Updates (best score init order)
+- Moved the `bestSurvivalScore`/`bestCheckpointScore` assignments above the first `updateTopScoreDisplay()` call so the helper no longer runs before those `let` variables are initialized. This prevents the `ReferenceError: Cannot access 'bestSurvivalScore' before initialization`, allowing the rest of the module (including the menu button bindings) to execute correctly so the Survival/Checkpoint buttons now launch the intended runs.
+
+## Tests (best score init order)
+- Same two Playwright runs as above (Survival and Checkpoint selectors, each with the standard action payload) were rerun after the fix to confirm the page loads without errors and both buttons start their respective game modes; outputs still land under `CodexOutput/tests`.

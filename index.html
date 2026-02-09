@@ -7,7 +7,15 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>CatStacker</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link id="main-stylesheet" rel="stylesheet" href="styles.css" />
+    <script>
+      (() => {
+        const link = document.getElementById("main-stylesheet");
+        if (!link) return;
+        const baseHref = (link.getAttribute("href") || "").split("?")[0] || "styles.css";
+        link.href = `${baseHref}?t=${Date.now()}`;
+      })();
+    </script>
   </head>
   <body>
     <main>

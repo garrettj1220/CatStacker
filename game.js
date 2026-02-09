@@ -301,10 +301,10 @@ const state = {
   skullWarningVisible: false
 };
 
-state.topScore = loadPersonalBest();
-updateTopScoreDisplay();
 let bestSurvivalScore = loadBestScore(BEST_SURVIVAL_KEY);
 let bestCheckpointScore = loadBestScore(BEST_CHECKPOINT_KEY);
+state.topScore = loadPersonalBest();
+updateTopScoreDisplay();
 function loadBestScore(key) {
   try {
     const raw = window.localStorage.getItem(key);
