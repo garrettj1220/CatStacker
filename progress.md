@@ -71,3 +71,10 @@ Original prompt: ok build it the first version! use our web game building skill
 
 ## Tests (weather + lighting)
 - `node /Users/garrettjohnson/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#start-button" --actions-file /Users/garrettjohnson/.codex/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests` (passes; same ES module warning appears from the helper, but the run captures the updated rain/lightning/fog visuals under `CodexOutput/tests`).
+
+## Updates (game modes + UI)
+- Replaced the start overlay with a full-screen menu that lists the Survival and Checkpoint Run options, shows the best scores for both modes, and adds the new skull warning, pause menu (Esc → resume/main menu), and updated completion overlays so loss/victory screens reflect the selected mode.
+- Checkpoint Run now remembers the score at the start of each level, fades you back to that starting score when you fail, and the victory/defeat panels now include “Play Again” / “Main Menu” buttons plus the mode label.
+
+## Tests (game modes + UI)
+- `node /Users/garrettjohnson/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#mode-survival" --actions-file /Users/garrettjohnson/.codex/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests` (passes; Playwright reports the existing module-type warning but successfully exercises the new menu and game flow).

@@ -98,6 +98,108 @@ canvas {
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
+
+.main-menu {
+  position: absolute;
+  inset: 0;
+  background: #05010b;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  z-index: 10;
+}
+.main-menu-content {
+  text-align: center;
+  max-width: 420px;
+  padding: 32px;
+  border-radius: 20px;
+  background: rgba(4, 4, 12, 0.9);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+}
+.main-menu h1 {
+  font-size: 3rem;
+  letter-spacing: 0.4em;
+  margin-bottom: 12px;
+}
+.menu-subtitle {
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  font-size: 0.9rem;
+}
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.cat-card {
+  height: 70px;
+  border-radius: 16px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+.cat-card-one {
+  background-image: url("Art/Cats/Cat1.png");
+}
+.cat-card-two {
+  background-image: url("Art/Cats/Cat2.png");
+}
+.cat-card-three {
+  background-image: url("Art/Cats/Cat3.png");
+}
+.mode-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.mode-btn {
+  flex: 1;
+  padding: 14px 18px;
+  border: none;
+  border-radius: 999px;
+  background: #fdc54a;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.mode-btn:hover {
+  transform: translateY(-2px);
+  background: #fba636;
+}
+.best-scores {
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+}
+.overlay-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+.overlay-actions button {
+  flex: 0 0 140px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: #f97316;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.overlay-actions button:hover {
+  transform: translateY(-2px);
+}
+.pause-panel {
+  min-width: 320px;
+}
 .level-overlay {
   position: absolute;
   inset: 0;

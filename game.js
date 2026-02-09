@@ -1,15 +1,20 @@
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const overlay = document.getElementById("game-over");
-const playAgainBtn = document.getElementById("play-again");
+const mainMenu = document.getElementById("main-menu");
+const modeSurvivalBtn = document.getElementById("mode-survival");
+const modeCheckpointBtn = document.getElementById("mode-checkpoint");
+const bestSurvivalScoreEl = document.getElementById("best-survival-score");
+const bestCheckpointScoreEl = document.getElementById("best-checkpoint-score");
 const scoreValue = document.getElementById("score-value");
 const heightValue = document.getElementById("height-value");
 const wobbleBar = document.getElementById("wobble-bar");
 const recordValue = document.getElementById("record-value");
 const finalHeight = document.getElementById("final-height");
 const finalScore = document.getElementById("final-score");
-const startScreen = document.getElementById("start-screen");
-const startButton = document.getElementById("start-button");
+const pauseMenu = document.getElementById("pause-menu");
+const pauseResumeBtn = document.getElementById("pause-resume");
+const pauseMenuHome = document.getElementById("pause-menu-home");
 const unlockList = document.getElementById("unlock-list");
 const unlockFill = document.getElementById("unlock-fill");
 const heartRow = document.getElementById("heart-row");
@@ -20,8 +25,16 @@ const overlayLevel = document.getElementById("overlay-level");
 const victoryScreen = document.getElementById("victory-screen");
 const victoryGallery = document.getElementById("victory-gallery");
 const victoryPlayAgain = document.getElementById("victory-play-again");
+const victoryMainMenu = document.getElementById("victory-main-menu");
 const topScoreValue = document.getElementById("top-score-value");
+const BEST_SURVIVAL_KEY = "catstacker-best-survival";
+const BEST_CHECKPOINT_KEY = "catstacker-best-checkpoint";
 const slipperyWarning = document.getElementById("slippery-warning");
+const victoryModeLabel = document.getElementById("victory-mode");
+const gameOverTitle = document.getElementById("game-over-title");
+const gameOverText = document.getElementById("game-over-text");
+const gameOverPlayAgain = document.getElementById("game-over-play-again");
+const gameOverMainMenu = document.getElementById("game-over-main-menu");
 const PERSONAL_BEST_KEY = "catstacker-personal-best";
 
 const CAT_NAMES = [
@@ -263,6 +276,9 @@ const state = {
   imbalanceTrend: 0,
   dynamicThresholdLeft: BASE_COLLAPSE_THRESHOLD,
   dynamicThresholdRight: BASE_COLLAPSE_THRESHOLD,
+  gameMode: "survival",
+  paused: false,
+  levelStartScore: 0,
   missOffsetRatio: DEFAULT_MISS_OFFSET_RATIO,
   lightningTimer: 0,
   nextLightning: Infinity,
@@ -290,6 +306,88 @@ const state = {
 
 state.topScore = loadPersonalBest();
 updateTopScoreDisplay();
+let bestSurvivalScore = loadBestScore(BEST_SURVIVAL_KEY);
+let bestCheckpointScore = loadBestScore(BEST_CHECKPOINT_KEY);
+function loadBestScore(key) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    const parsed = parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  } catch (error) {
+    // ignore
+  }
+  return 0;
+}
+function saveBestScore(key, value) {
+  try {
+    window.localStorage.setItem(key, String(value));
+  } catch (error) {
+    // ignore
+  }
+}
+function updateMenuBestScores() {
+  if (bestSurvivalScoreEl) {
+    bestSurvivalScoreEl.textContent = bestSurvivalScore.toString();
+  }
+  if (bestCheckpointScoreEl) {
+    bestCheckpointScoreEl.textContent = bestCheckpointScore.toString();
+  }
+}
+function recordModeBest(score) {
+  if (state.gameMode === "checkpoint") {
+    if (score > bestCheckpointScore) {
+      bestCheckpointScore = score;
+      saveBestScore(BEST_CHECKPOINT_KEY, score);
+    }
+  } else {
+    if (score > bestSurvivalScore) {
+      bestSurvivalScore = score;
+      saveBestScore(BEST_SURVIVAL_KEY, score);
+    }
+  }
+  updateMenuBestScores();
+}
+function showMainMenu() {
+  mainMenu && mainMenu.classList.remove("hidden");
+  overlay && overlay.classList.add("hidden");
+  victoryScreen && victoryScreen.classList.add("hidden");
+  pauseMenu && pauseMenu.classList.add("hidden");
+  state.mode = "start";
+  state.paused = false;
+  state.sessionScore = 0;
+  state.score = 0;
+  state.levelStartScore = 0;
+  updateMenuBestScores();
+}
+function hideMainMenu() {
+  mainMenu && mainMenu.classList.add("hidden");
+}
+function startNewRun(mode) {
+  state.gameMode = mode;
+  state.sessionScore = 0;
+  state.score = 0;
+  state.levelStartScore = 0;
+  hideMainMenu();
+  state.paused = false;
+  startGame();
+}
+function restartCheckpointLevel() {
+  overlay && overlay.classList.add("hidden");
+  state.sessionScore = state.levelStartScore;
+  state.score = state.levelStartScore;
+  beginLevel(state.currentLevel, true);
+}
+function openPauseMenu() {
+  if (state.mode !== "running") return;
+  pauseMenu && pauseMenu.classList.remove("hidden");
+  state.paused = true;
+}
+function closePauseMenu() {
+  pauseMenu && pauseMenu.classList.add("hidden");
+  state.paused = false;
+}
 
 function loadPersonalBest() {
   try {
@@ -351,6 +449,7 @@ async function loadAssets() {
   await Promise.all(promises);
   assetsLoaded = true;
   renderUnlockList();
+  showMainMenu();
   requestAnimationFrame(loop);
 }
 
@@ -406,10 +505,9 @@ function deriveCatMetadata(name, image) {
 
 function startGame() {
   overlay.classList.add("hidden");
-  startScreen.classList.add("hidden");
   victoryScreen && victoryScreen.classList.add("hidden");
-  state.sessionScore = 0;
-  state.score = 0;
+  pauseMenu && pauseMenu.classList.add("hidden");
+  state.score = state.sessionScore;
   beginLevel(0, true);
 }
 
@@ -433,6 +531,7 @@ function startLevelTransition(nextLevel) {
 function beginLevel(levelIndex, skipOverlay = false) {
   const safeIndex = clamp(levelIndex, 0, LEVELS.length - 1);
   state.currentLevel = safeIndex;
+  state.levelStartScore = state.sessionScore;
   state.levelThreshold =
     LEVEL_THRESHOLDS[safeIndex] !== undefined
       ? LEVEL_THRESHOLDS[safeIndex]
@@ -565,7 +664,7 @@ function placeInitialCat(name = CAT_NAMES[0]) {
 }
 
 function attemptDrop() {
-  if (state.mode !== "running" || state.activeCat || !assetsLoaded) return;
+  if (state.mode !== "running" || state.activeCat || !assetsLoaded || state.paused) return;
   const name = state.previewName || getLevelCatName(state.currentLevel);
   const metadata = getCatMetadata(name);
   const image = assetCache.get(name);
@@ -817,6 +916,9 @@ function endRun() {
   finalHeight.textContent = state.stack.length;
   finalScore.textContent = state.score;
   finalLevel.textContent = state.currentLevel + 1;
+  recordModeBest(state.score);
+  showGameOverPanel();
+  state.paused = false;
   overlay.classList.remove("hidden");
 }
 
@@ -881,6 +983,7 @@ function clampToPlatform(x, width) {
 
 function update(deltaRatio = 1, deltaMs = GAME_FRAME_DELTA_MS) {
   if (!assetsLoaded) return;
+  if (state.paused) return;
   const levelEffect = LEVEL_EFFECTS[getLevelNumber()] || {};
   updateFog(deltaMs, levelEffect);
   if (state.mode === "running") {
@@ -1362,7 +1465,15 @@ function checkVictory() {
 
 function showVictoryScreen() {
   overlay.classList.add("hidden");
+  recordModeBest(state.score);
   if (!victoryScreen) return;
+  const modeLabel =
+    state.gameMode === "checkpoint"
+      ? "Checkpoint Run"
+      : "Survival";
+  if (victoryModeLabel) {
+    victoryModeLabel.textContent = `You beat CatStacker in ${modeLabel}.`;
+  }
   if (victoryGallery) {
     victoryGallery.innerHTML = "";
     CAT_NAMES.forEach((name, index) => {
@@ -1377,6 +1488,16 @@ function showVictoryScreen() {
     });
   }
   victoryScreen.classList.remove("hidden");
+}
+
+function showGameOverPanel() {
+  const isCheckpoint = state.gameMode === "checkpoint";
+  if (gameOverTitle) {
+    gameOverTitle.textContent = isCheckpoint ? "Level Failed" : "Game Over";
+  }
+  if (gameOverText) {
+    gameOverText.textContent = `Your score: ${state.score}`;
+  }
 }
 
 function triggerLadderAdvance() {
@@ -1438,6 +1559,13 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     attemptDrop();
   }
+  if (event.code === "Escape") {
+    if (state.paused) {
+      closePauseMenu();
+    } else {
+      openPauseMenu();
+    }
+  }
   if (event.key === "f") {
     toggleFullscreen();
   }
@@ -1448,7 +1576,7 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 function handleCanvasClick(event) {
-  if (state.mode !== "running") return;
+  if (state.mode !== "running" || state.paused) return;
   event.preventDefault();
   attemptDrop();
 }
@@ -1458,19 +1586,45 @@ function screenToWorldX(screenX) {
   return (screenX - canvas.width / 2) / zoom + canvas.width / 2;
 }
 
-startButton.addEventListener("click", () => {
-  startGame();
-});
-
-playAgainBtn.addEventListener("click", () => {
-  startGame();
-});
-
-if (victoryPlayAgain) {
-  victoryPlayAgain.addEventListener("click", () => {
-    startGame();
+modeSurvivalBtn &&
+  modeSurvivalBtn.addEventListener("click", () => {
+    startNewRun("survival");
   });
-}
+modeCheckpointBtn &&
+  modeCheckpointBtn.addEventListener("click", () => {
+    startNewRun("checkpoint");
+  });
+pauseResumeBtn &&
+  pauseResumeBtn.addEventListener("click", () => {
+    closePauseMenu();
+  });
+pauseMenuHome &&
+  pauseMenuHome.addEventListener("click", () => {
+    closePauseMenu();
+    showMainMenu();
+  });
+gameOverPlayAgain &&
+  gameOverPlayAgain.addEventListener("click", () => {
+    if (state.gameMode === "checkpoint") {
+      restartCheckpointLevel();
+    } else {
+      startNewRun("survival");
+    }
+  });
+gameOverMainMenu &&
+  gameOverMainMenu.addEventListener("click", () => {
+    overlay && overlay.classList.add("hidden");
+    showMainMenu();
+  });
+victoryPlayAgain &&
+  victoryPlayAgain.addEventListener("click", () => {
+    startNewRun(state.gameMode);
+  });
+victoryMainMenu &&
+  victoryMainMenu.addEventListener("click", () => {
+    victoryScreen && victoryScreen.classList.add("hidden");
+    showMainMenu();
+  });
 
 function toggleFullscreen() {
   if (document.fullscreenElement) {

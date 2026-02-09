@@ -12,12 +12,23 @@
   <body>
     <main>
       <canvas id="game-canvas" width="960" height="640"></canvas>
-      <div id="start-screen" class="overlay start-screen">
-        <div class="panel">
+      <div id="main-menu" class="main-menu">
+        <div class="main-menu-content">
           <h1>CatStacker</h1>
-          <p>Stack the loaf cats as high as you can. Watch the wobble meter, drop with precision, and keep the tower balanced.</p>
-          <p class="hint">Click or press Space to place a cat. The tower zooms out as you ascend.</p>
-          <button id="start-button" type="button">Start Stacking</button>
+          <p class="menu-subtitle">Choose your run</p>
+          <div class="cat-grid" aria-hidden="true">
+            <div class="cat-card cat-card-one"></div>
+            <div class="cat-card cat-card-two"></div>
+            <div class="cat-card cat-card-three"></div>
+          </div>
+          <div class="mode-buttons">
+            <button id="mode-survival" class="mode-btn" data-mode="survival">Survival</button>
+            <button id="mode-checkpoint" class="mode-btn" data-mode="checkpoint">Checkpoint Run</button>
+          </div>
+          <div class="best-scores">
+            <p>Best Survival Score: <span id="best-survival-score">0</span></p>
+            <p>Best Checkpoint Run Score: <span id="best-checkpoint-score">0</span></p>
+          </div>
         </div>
       </div>
       <aside id="unlock-panel" class="unlock-panel" aria-live="polite">
@@ -45,11 +56,34 @@
           <button id="play-again" type="button">Play Again</button>
         </div>
       </div>
+      <div id="pause-menu" class="overlay hidden">
+        <div class="panel pause-panel">
+          <h1>Paused</h1>
+          <div class="overlay-actions">
+            <button id="pause-resume" type="button">Resume</button>
+            <button id="pause-menu-home" type="button">Main Menu</button>
+          </div>
+        </div>
+      </div>
+      <div id="game-over" class="overlay hidden">
+        <div class="panel">
+          <h1 id="game-over-title">Game Over</h1>
+          <p id="game-over-text">Your score: 0</p>
+          <div class="overlay-actions">
+            <button id="game-over-play-again" type="button">Play Again</button>
+            <button id="game-over-main-menu" type="button">Main Menu</button>
+          </div>
+        </div>
+      </div>
       <div id="victory-screen" class="overlay hidden">
         <div class="panel victory-panel">
-          <h1>congratulations you beat cat stacker</h1>
+          <h1>Victory!</h1>
+          <p id="victory-mode">You beat CatStacker in Survival mode.</p>
           <div id="victory-gallery" class="victory-gallery"></div>
-          <button id="victory-play-again" type="button">Play Again</button>
+          <div class="overlay-actions">
+            <button id="victory-play-again" type="button">Play Again</button>
+            <button id="victory-main-menu" type="button">Main Menu</button>
+          </div>
         </div>
       </div>
       <div class="hud">
