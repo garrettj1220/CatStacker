@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>CatStacker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <canvas id="game-canvas" width="960" height="640"></canvas>
+      <div id="start-screen" class="overlay start-screen">
+        <div class="panel">
+          <h1>CatStacker</h1>
+          <p>Stack the loaf cats as high as you can. Watch the wobble meter, drop with precision, and keep the tower balanced.</p>
+          <p class="hint">Click or press Space to place a cat. The tower zooms out as you ascend.</p>
+          <button id="start-button" type="button">Start Stacking</button>
+        </div>
+      </div>
+      <aside id="unlock-panel" class="unlock-panel" aria-live="polite">
+        <div class="unlock-header">
+          <h2>Cat Ladder</h2>
+        </div>
+        <div class="unlock-track">
+          <div id="unlock-fill" class="unlock-fill"></div>
+        </div>
+        <ul id="unlock-list" class="unlock-list"></ul>
+      </aside>
+      <div class="record-track" aria-live="polite">
+        Record: <span id="record-value">0</span>
+      </div>
+      <div id="game-over" class="overlay hidden">
+        <div class="panel">
+          <h1>Game Over</h1>
+          <p>Height reached: <span id="final-height">0</span> cats</p>
+          <p>Score: <span id="final-score">0</span></p>
+          <button id="play-again" type="button">Play Again</button>
+        </div>
+      </div>
+      <div class="hud">
+        <p class="score">Score: <span id="score-value">0</span></p>
+        <p class="height">Height: <span id="height-value">0</span></p>
+        <div class="wobble">
+          <span class="label">Wobble</span>
+          <div class="meter">
+            <div id="wobble-bar"></div>
+          </div>
+          <div id="heart-row" class="heart-row" aria-label="Lives"></div>
+        </div>
+      </div>
+    </main>
+    <script src="game.js" type="module"></script>
+  </body>
+</html>
