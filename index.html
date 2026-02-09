@@ -3,6 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>CatStacker</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -29,15 +32,20 @@
       <div class="record-track" aria-live="polite">
         Record: <span id="record-value">0</span>
       </div>
+      <div id="level-overlay" class="level-overlay hidden">
+        <div class="level-text">Level <span id="overlay-level">1</span></div>
+      </div>
       <div id="game-over" class="overlay hidden">
         <div class="panel">
           <h1>Game Over</h1>
+          <p>Level reached: <span id="final-level">1</span></p>
           <p>Height reached: <span id="final-height">0</span> cats</p>
           <p>Score: <span id="final-score">0</span></p>
           <button id="play-again" type="button">Play Again</button>
         </div>
       </div>
       <div class="hud">
+        <p class="level-label">Level <span id="level-value">1</span></p>
         <p class="score">Score: <span id="score-value">0</span></p>
         <p class="height">Height: <span id="height-value">0</span></p>
         <div class="wobble">
@@ -49,6 +57,11 @@
         </div>
       </div>
     </main>
-    <script src="game.js" type="module"></script>
+    <script>
+      const script = document.createElement("script");
+      script.type = "module";
+      script.src = `game.js?t=${Date.now()}`;
+      document.body.appendChild(script);
+    </script>
   </body>
 </html>

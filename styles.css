@@ -84,6 +84,22 @@ canvas {
   border-radius: 8px;
   box-shadow: 0 8px 20px rgba(22, 22, 26, 0.2);
 }
+.level-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: grid;
+  place-items: center;
+  color: white;
+  font-weight: 700;
+  font-size: 2rem;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.level-overlay.visible {
+  opacity: 1;
+}
 .unlock-panel {
   position: absolute;
   left: 20px;
