@@ -78,3 +78,10 @@ Original prompt: ok build it the first version! use our web game building skill
 
 ## Tests (game modes + UI)
 - `node /Users/garrettjohnson/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#mode-survival" --actions-file /Users/garrettjohnson/.codex/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests` (passes; Playwright reports the existing module-type warning but successfully exercises the new menu and game flow).
+
+## Updates (main menu binding reliability)
+- Rework the main menu handler so the DOM elements are resolved after the document finishes parsing, add a helper that caches the `#main-menu` reference, and attach the click delegation only once after the DOM is ready so Survival/Checkpoint buttons actually run `startNewRun` every time the full-screen menu is shown.
+
+## Tests (main menu binding reliability)
+- `node /Users/garrettjohnson/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#mode-survival" --actions-file /Users/garrettjohnson/.codex/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests` (passes; module warning is expected and the run captures the updated start flow in `CodexOutput/tests`).
+- `node /Users/garrettjohnson/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#mode-checkpoint" --actions-file /Users/garrettjohnson/.codex/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests` (passes; same warning appears, but the checkpoint button confirms the menu can transition into that mode as well).

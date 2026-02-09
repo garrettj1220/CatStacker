@@ -1,7 +1,7 @@
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const overlay = document.getElementById("game-over");
-const mainMenu = document.getElementById("main-menu");
+let mainMenu = document.getElementById("main-menu");
 const bestSurvivalScoreEl = document.getElementById("best-survival-score");
 const bestCheckpointScoreEl = document.getElementById("best-checkpoint-score");
 const scoreValue = document.getElementById("score-value");
@@ -347,8 +347,16 @@ function recordModeBest(score) {
   updateMenuBestScores();
   updateTopScoreDisplay();
 }
+function resolveMainMenu() {
+  if (!mainMenu) {
+    mainMenu = document.getElementById("main-menu");
+  }
+  return mainMenu;
+}
+
 function showMainMenu() {
-  mainMenu && mainMenu.classList.remove("hidden");
+  const menu = resolveMainMenu();
+  menu && menu.classList.remove("hidden");
   overlay && overlay.classList.add("hidden");
   victoryScreen && victoryScreen.classList.add("hidden");
   pauseMenu && pauseMenu.classList.add("hidden");
@@ -361,7 +369,8 @@ function showMainMenu() {
   updateTopScoreDisplay();
 }
 function hideMainMenu() {
-  mainMenu && mainMenu.classList.add("hidden");
+  const menu = resolveMainMenu();
+  menu && menu.classList.add("hidden");
 }
 function startNewRun(mode) {
   state.gameMode = mode;
@@ -1585,9 +1594,12 @@ function screenToWorldX(screenX) {
   return (screenX - canvas.width / 2) / zoom + canvas.width / 2;
 }
 
+let mainMenuHandlersBound = false;
+
 function setupMainMenuModeHandlers() {
-  if (!mainMenu) return;
-  mainMenu.addEventListener("click", (event) => {
+  const menu = resolveMainMenu();
+  if (!menu || mainMenuHandlersBound) return;
+  menu.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-mode]");
     if (!button) return;
     const mode = button.dataset.mode;
@@ -1595,9 +1607,14 @@ function setupMainMenuModeHandlers() {
     event.preventDefault();
     startNewRun(mode);
   });
+  mainMenuHandlersBound = true;
 }
 
-setupMainMenuModeHandlers();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", setupMainMenuModeHandlers);
+} else {
+  setupMainMenuModeHandlers();
+}
 pauseResumeBtn &&
   pauseResumeBtn.addEventListener("click", () => {
     closePauseMenu();
