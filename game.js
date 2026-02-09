@@ -2,8 +2,6 @@ const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const overlay = document.getElementById("game-over");
 const mainMenu = document.getElementById("main-menu");
-const modeSurvivalBtn = document.getElementById("mode-survival");
-const modeCheckpointBtn = document.getElementById("mode-checkpoint");
 const bestSurvivalScoreEl = document.getElementById("best-survival-score");
 const bestCheckpointScoreEl = document.getElementById("best-checkpoint-score");
 const scoreValue = document.getElementById("score-value");
@@ -1587,14 +1585,24 @@ function screenToWorldX(screenX) {
   return (screenX - canvas.width / 2) / zoom + canvas.width / 2;
 }
 
-modeSurvivalBtn &&
-  modeSurvivalBtn.addEventListener("click", () => {
-    startNewRun("survival");
-  });
-modeCheckpointBtn &&
-  modeCheckpointBtn.addEventListener("click", () => {
-    startNewRun("checkpoint");
-  });
+function bindModeButtons() {
+  const modeSurvivalBtn = document.getElementById("mode-survival");
+  const modeCheckpointBtn = document.getElementById("mode-checkpoint");
+  modeSurvivalBtn &&
+    modeSurvivalBtn.addEventListener("click", () => {
+      startNewRun("survival");
+    });
+  modeCheckpointBtn &&
+    modeCheckpointBtn.addEventListener("click", () => {
+      startNewRun("checkpoint");
+    });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bindModeButtons);
+} else {
+  bindModeButtons();
+}
 pauseResumeBtn &&
   pauseResumeBtn.addEventListener("click", () => {
     closePauseMenu();
