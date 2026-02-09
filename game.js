@@ -9,7 +9,6 @@ const bestCheckpointScoreEl = document.getElementById("best-checkpoint-score");
 const scoreValue = document.getElementById("score-value");
 const heightValue = document.getElementById("height-value");
 const wobbleBar = document.getElementById("wobble-bar");
-const recordValue = document.getElementById("record-value");
 const finalHeight = document.getElementById("final-height");
 const finalScore = document.getElementById("final-score");
 const pauseMenu = document.getElementById("pause-menu");
@@ -348,6 +347,7 @@ function recordModeBest(score) {
     }
   }
   updateMenuBestScores();
+  updateTopScoreDisplay();
 }
 function showMainMenu() {
   mainMenu && mainMenu.classList.remove("hidden");
@@ -360,6 +360,7 @@ function showMainMenu() {
   state.score = 0;
   state.levelStartScore = 0;
   updateMenuBestScores();
+  updateTopScoreDisplay();
 }
 function hideMainMenu() {
   mainMenu && mainMenu.classList.add("hidden");
@@ -369,6 +370,7 @@ function startNewRun(mode) {
   state.sessionScore = 0;
   state.score = 0;
   state.levelStartScore = 0;
+  updateTopScoreDisplay();
   hideMainMenu();
   state.paused = false;
   startGame();
@@ -411,9 +413,10 @@ function savePersonalBest(value) {
 }
 
 function updateTopScoreDisplay() {
-  if (topScoreValue) {
-    topScoreValue.textContent = (state.topScore || 0).toString();
-  }
+  if (!topScoreValue) return;
+  const best =
+    state.gameMode === "checkpoint" ? bestCheckpointScore : bestSurvivalScore;
+  topScoreValue.textContent = best.toString();
 }
 
 function maybeUpdateTopScore() {
@@ -911,7 +914,6 @@ function updateTumble() {
 function endRun() {
   state.mode = "gameover";
   state.record = Math.max(state.record, state.score);
-  recordValue.textContent = state.record;
   maybeUpdateTopScore();
   finalHeight.textContent = state.stack.length;
   finalScore.textContent = state.score;
@@ -1455,7 +1457,6 @@ function checkVictory() {
   if (isFinalLevel && state.levelScore >= state.levelThreshold) {
     state.mode = "victory";
     state.record = Math.max(state.record, state.score);
-    recordValue.textContent = state.record;
     maybeUpdateTopScore();
     showVictoryScreen();
     return true;
