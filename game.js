@@ -1585,24 +1585,19 @@ function screenToWorldX(screenX) {
   return (screenX - canvas.width / 2) / zoom + canvas.width / 2;
 }
 
-function bindModeButtons() {
-  const modeSurvivalBtn = document.getElementById("mode-survival");
-  const modeCheckpointBtn = document.getElementById("mode-checkpoint");
-  modeSurvivalBtn &&
-    modeSurvivalBtn.addEventListener("click", () => {
-      startNewRun("survival");
-    });
-  modeCheckpointBtn &&
-    modeCheckpointBtn.addEventListener("click", () => {
-      startNewRun("checkpoint");
-    });
+function setupMainMenuModeHandlers() {
+  if (!mainMenu) return;
+  mainMenu.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-mode]");
+    if (!button) return;
+    const mode = button.dataset.mode;
+    if (!mode) return;
+    event.preventDefault();
+    startNewRun(mode);
+  });
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", bindModeButtons);
-} else {
-  bindModeButtons();
-}
+setupMainMenuModeHandlers();
 pauseResumeBtn &&
   pauseResumeBtn.addEventListener("click", () => {
     closePauseMenu();
