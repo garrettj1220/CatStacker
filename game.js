@@ -25,6 +25,9 @@ const enemyIntroImage = document.getElementById("enemy-intro-image");
 const enemyIntroTitle = document.getElementById("enemy-intro-title");
 const enemyIntroText = document.getElementById("enemy-intro-text");
 const enemyIntroButton = document.getElementById("enemy-intro-button");
+const topScoreValue = document.getElementById("top-score-value");
+const PERSONAL_BEST_KEY = "catstacker-personal-best";
+const seenEnemyIntroLevels = new Set();
 
 const CAT_NAMES = [
   "Cat1.png",
@@ -202,6 +205,7 @@ const state = {
   wobbleTarget: 0,
   score: 0,
   record: INITIAL_RECORD,
+  topScore: 0,
   collapseTimer: 0,
   unlockedCats: [CAT_NAMES[0]],
   lastUnlockedIndex: 0,
@@ -216,6 +220,7 @@ const state = {
   previewDirectionCooldown: 0,
   currentLevel: 0,
   levelScore: 0,
+  sessionScore: 0,
   levelThreshold: LEVEL_THRESHOLDS[0],
   backgroundGradient: LEVELS[0].gradient,
   cameraZoom: 1,
@@ -237,6 +242,48 @@ const state = {
   screenShakeX: 0,
   screenShakeY: 0
 };
+
+state.topScore = loadPersonalBest();
+updateTopScoreDisplay();
+
+function loadPersonalBest() {
+  try {
+    const raw = window.localStorage.getItem(PERSONAL_BEST_KEY);
+    const parsed = parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  } catch (error) {
+    // ignore
+  }
+  return 0;
+}
+
+function savePersonalBest(value) {
+  try {
+    window.localStorage.setItem(PERSONAL_BEST_KEY, String(value));
+  } catch (error) {
+    // ignore
+  }
+}
+
+function updateTopScoreDisplay() {
+  if (topScoreValue) {
+    topScoreValue.textContent = (state.topScore || 0).toString();
+  }
+}
+
+function maybeUpdateTopScore() {
+  if (state.score > state.topScore) {
+    state.topScore = state.score;
+    savePersonalBest(state.topScore);
+    updateTopScoreDisplay();
+  }
+}
+
+function resetEnemyIntroHistory() {
+  seenEnemyIntroLevels.clear();
+}
 
 const assetCache = new Map();
 const catDefs = new Map();
@@ -337,6 +384,9 @@ function startGame() {
   startScreen.classList.add("hidden");
   victoryScreen && victoryScreen.classList.add("hidden");
   enemyIntro && enemyIntro.classList.add("hidden");
+  state.sessionScore = 0;
+  state.score = 0;
+  resetEnemyIntroHistory();
   beginLevel(0, true);
 }
 
@@ -592,6 +642,7 @@ function finalizeCat(cat) {
     }
   }
   state.activeCat = null;
+  state.sessionScore += 1;
   recalcStats();
   checkCollapse();
   state.previewName = pickRandomCat();
@@ -601,8 +652,8 @@ function finalizeCat(cat) {
 function recalcStats() {
   const stack = state.stack;
   if (!stack.length) {
-    state.score = 0;
     state.levelScore = 0;
+    state.score = state.sessionScore;
     state.wobble = 0;
     state.wobbleTarget = 0;
     updateCameraTargets();
@@ -613,7 +664,7 @@ function recalcStats() {
     state.wobble = 0;
     state.wobbleTarget = 0;
     state.levelScore = Math.max(0, stack.length - 1);
-    state.score = state.levelScore;
+    state.score = state.sessionScore;
     updateCameraTargets();
     updateUnlocks();
     return;
@@ -626,7 +677,7 @@ function recalcStats() {
   state.wobbleTarget = dangerRatio * WOBBLE_THRESHOLD;
   const height = stack.length;
   state.levelScore = Math.max(0, height - 1);
-  state.score = state.levelScore;
+  state.score = state.sessionScore;
   updateCameraTargets();
   updateUnlocks();
   checkLevelProgress();
@@ -704,6 +755,7 @@ function endRun() {
   state.mode = "gameover";
   state.record = Math.max(state.record, state.score);
   recordValue.textContent = state.record;
+  maybeUpdateTopScore();
   finalHeight.textContent = state.stack.length;
   finalScore.textContent = state.score;
   finalLevel.textContent = state.currentLevel + 1;
@@ -1276,6 +1328,9 @@ function checkVictory() {
   const isFinalLevel = state.currentLevel >= LEVELS.length - 1;
   if (isFinalLevel && state.levelScore >= state.levelThreshold) {
     state.mode = "victory";
+    state.record = Math.max(state.record, state.score);
+    recordValue.textContent = state.record;
+    maybeUpdateTopScore();
     showVictoryScreen();
     return true;
   }
@@ -1304,6 +1359,10 @@ function showVictoryScreen() {
 function showEnemyIntroIfNeeded(levelIndex) {
   const info = ENEMY_INTRO_STAGES[levelIndex];
   if (!info || !enemyIntro) return false;
+  if (seenEnemyIntroLevels.has(levelIndex)) {
+    return false;
+  }
+  seenEnemyIntroLevels.add(levelIndex);
   enemyIntroTitle.textContent = info.title;
   enemyIntroText.textContent = info.description;
   enemyIntroImage.src = info.image;

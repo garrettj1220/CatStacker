@@ -80,9 +80,23 @@ canvas {
   font-weight: 700;
   color: #111;
   background: rgba(255, 255, 255, 0.85);
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
   box-shadow: 0 8px 20px rgba(22, 22, 26, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.record-line {
+  font-size: 0.85rem;
+  display: block;
+}
+.record-line.top-line {
+  color: #5a5f7a;
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 .level-overlay {
   position: absolute;
