@@ -57,6 +57,10 @@ const PHYSICS_SUBSTEPS = 4;
 const PHYSICS_DT = 1 / PHYSICS_SUBSTEPS;
 const FRICTION_PER_SUBSTEP = Math.pow(DROP_VX_FRICTION, PHYSICS_DT);
 const GAME_FRAME_DELTA_MS = 16.666;
+const MIN_FRAME_DELTA_MS = 8;
+const MAX_FRAME_DELTA_MS = 44;
+const MIN_DELTA_RATIO = 0.5;
+const MAX_DELTA_RATIO = 2;
 const BASE_COLLAPSE_THRESHOLD = CAT_WIDTH * 0.46;
 const MIN_COLLAPSE_THRESHOLD = CAT_WIDTH * 0.28;
 const MAX_COLLAPSE_SHRINK = BASE_COLLAPSE_THRESHOLD - MIN_COLLAPSE_THRESHOLD;
@@ -86,7 +90,7 @@ const LEVELS = [
     previewSpeed: 8.4,
     previewDirectionChangeChance: 0.003,
     previewDirectionCooldown: 0,
-    dropDrift: 0.04,
+    dropDrift: 0,
     previewJitter: 0.02,
     dropRandomness: { amplitude: 0, interval: 0, variance: 0, inertia: 0 }
   },
@@ -540,7 +544,8 @@ function updateActiveCat(dt = 1) {
   cat.x += (cat.vx || 0) * dt;
   cat.vx = (cat.vx || 0) * FRICTION_PER_SUBSTEP;
   if (!cat.missed && cat.random && cat.random.amplitude > 0) {
-    cat.random.timer -= 1;
+    const timerDecay = dt / PHYSICS_DT;
+    cat.random.timer -= timerDecay;
     if (cat.random.timer <= 0) {
       const baseInterval = cat.random.interval || 40;
       cat.random.timer = baseInterval + Math.random() * (cat.random.variance || baseInterval * 0.35);
@@ -760,10 +765,10 @@ function clampToPlatform(x, width) {
   return clamp(x, bounds.left + 6, bounds.right - width - 6);
 }
 
-function update() {
+function update(deltaRatio = 1, deltaMs = GAME_FRAME_DELTA_MS) {
   if (!assetsLoaded) return;
   if (state.mode === "running") {
-    updateEnemies(GAME_FRAME_DELTA_MS);
+    updateEnemies(deltaMs);
   }
   state.cloudOffset = (state.cloudOffset + 0.25) % 400;
   const runSpeed = Math.min(6, 1 + Math.floor(state.stack.length * 0.05));
@@ -773,11 +778,11 @@ function update() {
       if (driftSpeed) {
         const stepDelta = driftSpeed / PREVIEW_MOVEMENT_STEPS;
         for (let step = 0; step < PREVIEW_MOVEMENT_STEPS; step += 1) {
-          movePreviewStep(stepDelta);
+          movePreviewStep(stepDelta * deltaRatio);
         }
       }
       for (let sub = 0; sub < PHYSICS_SUBSTEPS; sub += 1) {
-        updateActiveCat(PHYSICS_DT);
+        updateActiveCat(PHYSICS_DT * deltaRatio);
       }
     }
   }
@@ -1102,13 +1107,13 @@ function getBombSpawnInterval() {
   return BOMB_INCREMENT_LEVELS[level] || BOMB_BASE_INTERVAL;
 }
 
-function updateEnemies(delta) {
+function updateEnemies(deltaMs) {
   if (!state.enemies) {
     state.enemies = [];
   }
   if (state.mode === "running") {
     if (state.currentLevel >= 2) {
-      state.flyingSpawnAccumulator += delta;
+      state.flyingSpawnAccumulator += deltaMs;
       const interval = getFlyingSpawnInterval();
       if (state.flyingSpawnAccumulator >= interval) {
         spawnFlyingCat();
@@ -1116,7 +1121,7 @@ function updateEnemies(delta) {
       }
     }
     if (state.currentLevel >= 5) {
-      state.bombSpawnAccumulator += delta;
+      state.bombSpawnAccumulator += deltaMs;
       const interval = getBombSpawnInterval();
       if (state.bombSpawnAccumulator >= interval) {
         spawnBombCat();
@@ -1332,8 +1337,14 @@ function renderHearts() {
 }
 
 function loop(timestamp) {
+  if (!lastTimestamp) {
+    lastTimestamp = timestamp;
+  }
+  const rawDelta = timestamp - lastTimestamp;
+  const clampedDelta = clamp(rawDelta, MIN_FRAME_DELTA_MS, MAX_FRAME_DELTA_MS);
+  const deltaRatio = clamp(clampedDelta / GAME_FRAME_DELTA_MS, MIN_DELTA_RATIO, MAX_DELTA_RATIO);
   lastTimestamp = timestamp;
-  update();
+  update(deltaRatio, clampedDelta);
   render();
   requestAnimationFrame(loop);
 }
