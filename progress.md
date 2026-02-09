@@ -58,3 +58,16 @@ Original prompt: ok build it the first version! use our web game building skill
 
 ## Tests (punishing wobble + ladder order)
 - `node /Users/garrettjohnson/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#start-button" --actions-file /Users/garrettjohnson/.codex/skills/develop-web-game/references/action_payloads.json --iterations 6 --pause-ms 250 --screenshot-dir CodexOutput/tests` (screenshots/state saved under `CodexOutput/tests`).
+
+## Updates (enemy removal)
+- Removed the flying/bomb enemy spawns, splash panels, and HUD references so levels 3–8 stay focused on stacking; the canvas loop now only renders cats, the overlay no longer shows enemy intros, and enemy-related state (spawn timers, shaking, collapse penalties) is gone.
+
+## Tests (enemy removal)
+- `node /Users/garrettjohnson/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#start-button" --actions-file /Users/garrettjohnson/.codex/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests` (passes locally; the tool logs an ES module warning from the client, but navigation succeeds and the new enemy-free levels render as expected).
+
+## Updates (weather + lighting)
+- Added level-specific rain, lightning/flash shake, slippery-cat thresholds, fog bursts, and the sunrise background for level 6 while keeping levels 7–8 as stormy nightscapes with all elements active.
+- Reintroduced the wobble/lightning debuff, fog control, and rain rendering inside the loop, plus the skull warning overlay (sourced from Iconify and saved at `CodexOutput/icons/CatStacker/material-symbols-skull.svg`).
+
+## Tests (weather + lighting)
+- `node /Users/garrettjohnson/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#start-button" --actions-file /Users/garrettjohnson/.codex/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests` (passes; same ES module warning appears from the helper, but the run captures the updated rain/lightning/fog visuals under `CodexOutput/tests`).

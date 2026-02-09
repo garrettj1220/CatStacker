@@ -20,14 +20,9 @@ const overlayLevel = document.getElementById("overlay-level");
 const victoryScreen = document.getElementById("victory-screen");
 const victoryGallery = document.getElementById("victory-gallery");
 const victoryPlayAgain = document.getElementById("victory-play-again");
-const enemyIntro = document.getElementById("enemy-intro");
-const enemyIntroImage = document.getElementById("enemy-intro-image");
-const enemyIntroTitle = document.getElementById("enemy-intro-title");
-const enemyIntroText = document.getElementById("enemy-intro-text");
-const enemyIntroButton = document.getElementById("enemy-intro-button");
 const topScoreValue = document.getElementById("top-score-value");
+const slipperyWarning = document.getElementById("slippery-warning");
 const PERSONAL_BEST_KEY = "catstacker-personal-best";
-const seenEnemyIntroLevels = new Set();
 
 const CAT_NAMES = [
   "Cat1.png",
@@ -68,16 +63,13 @@ const BASE_COLLAPSE_THRESHOLD = CAT_WIDTH * 0.46;
 const MIN_COLLAPSE_THRESHOLD = CAT_WIDTH * 0.28;
 const MAX_COLLAPSE_SHRINK = BASE_COLLAPSE_THRESHOLD - MIN_COLLAPSE_THRESHOLD;
 const IMBALANCE_SHRINK_MULTIPLIER = 0.35;
-const FLYING_SPAWN_RATES = { 3: 4500, 4: 3600, 5: 3200 };
-const BOMB_BASE_INTERVAL = 9000;
-const BOMB_INCREMENT_LEVELS = { 7: 7500, 8: 6200 };
-const BOMB_HANG_MIN = 1000;
-const BOMB_HANG_MAX = 3000;
-const BOMB_FALL_SPEED = 0.085;
-const BOMB_ROTATION_SPEED = 0.0024;
-const BOMB_PENALTY_THRESHOLD = 22;
-const SHAKE_DURATION = 420;
-const SHAKE_STRENGTH = 6;
+const DEFAULT_MISS_OFFSET_RATIO = 0.36;
+const LIGHTNING_DEBUFF_MS = 2000;
+const LIGHTNING_SHAKE_DURATION = 280;
+const LIGHTNING_SHOCK_STRENGTH = 5;
+const LIGHTNING_FLASH_DECAY = 0.0025;
+const RAIN_DROPS = 160;
+const RAIN_SPAWN_RATE = 0.008;
 
 const CAMERA_EASE = 0.12;
 const ZOOM_MIN = 0.84;
@@ -108,8 +100,8 @@ const LEVELS = [
     dropRandomness: { amplitude: 0.18, interval: 68, variance: 36, inertia: 0.24 }
   },
   {
-    name: "Twilight Bloom",
-    gradient: ["#f4edff", "#cbb7ff"],
+    name: "Nightfall Rain",
+    gradient: ["#030513", "#0f122f"],
     previewSpeed: 10.3,
     previewDirectionChangeChance: 0.024,
     previewDirectionCooldown: 110,
@@ -118,8 +110,8 @@ const LEVELS = [
     dropRandomness: { amplitude: 0.33, interval: 62, variance: 32, inertia: 0.28 }
   },
   {
-    name: "Aurora Sweep",
-    gradient: ["#e7f8ff", "#a6efff"],
+    name: "Velvet Storm",
+    gradient: ["#040420", "#12142f"],
     previewSpeed: 10.3,
     previewDirectionChangeChance: 0.038,
     previewDirectionCooldown: 90,
@@ -128,8 +120,8 @@ const LEVELS = [
     dropRandomness: { amplitude: 0.46, interval: 54, variance: 28, inertia: 0.32 }
   },
   {
-    name: "Midnight Bloom",
-    gradient: ["#1d0f34", "#4a237d"],
+    name: "Shadow Drizzle",
+    gradient: ["#030415", "#17143a"],
     previewSpeed: 10.3,
     previewDirectionChangeChance: 0.058,
     previewDirectionCooldown: 68,
@@ -138,8 +130,8 @@ const LEVELS = [
     dropRandomness: { amplitude: 0.64, interval: 48, variance: 24, inertia: 0.36 }
   },
   {
-    name: "Neon Crest",
-    gradient: ["#0f102f", "#201e61"],
+    name: "Sunset Haze",
+    gradient: ["#ffbb77", "#ff6c40"],
     previewSpeed: 10.3,
     previewDirectionChangeChance: 0.066,
     previewDirectionCooldown: 54,
@@ -148,8 +140,8 @@ const LEVELS = [
     dropRandomness: { amplitude: 0.78, interval: 44, variance: 20, inertia: 0.38 }
   },
   {
-    name: "Pulse Summit",
-    gradient: ["#1b1f46", "#2c3b8f"],
+    name: "Electric Tangle",
+    gradient: ["#050215", "#1c1b3a"],
     previewSpeed: 10.3,
     previewDirectionChangeChance: 0.078,
     previewDirectionCooldown: 48,
@@ -158,8 +150,8 @@ const LEVELS = [
     dropRandomness: { amplitude: 0.95, interval: 40, variance: 18, inertia: 0.4 }
   },
   {
-    name: "Starlit Finale",
-    gradient: ["#15011f", "#440062"],
+    name: "Eclipse Apex",
+    gradient: ["#04020f", "#1a1236"],
     previewSpeed: 10.3,
     previewDirectionChangeChance: 0.09,
     previewDirectionCooldown: 40,
@@ -169,22 +161,61 @@ const LEVELS = [
   }
 ];
 const LEVEL_THRESHOLDS = LEVELS.map((_, idx) => 10 + idx * 5);
-const ENEMY_INTRO_STAGES = {
-  2: {
-    title: "Flying Cats",
-    description: "Hey, here's how this enemy works: flying loafs swoop in from the sides or above and sway as they approach. Click them before they reach the tower or they spike the wobble meter.",
-    image: "Art/Enemies/FlyingCat1.png"
+const LEVEL_EFFECTS = {
+  3: {
+    rain: true,
+    lightning: { minInterval: 8500, maxInterval: 10500, bolts: 3 },
+    slick: false,
+    fog: null,
+    skull: false
+  },
+  4: {
+    rain: true,
+    lightning: { minInterval: 7000, maxInterval: 9000, bolts: 3 },
+    slipThreshold: 0.32,
+    fog: null,
+    skull: true
   },
   5: {
-    title: "Cat Bombs",
-    description: "Hey, here's how this enemy works: a bomb cat swings at the top and then drops. Click it while it is falling to make it pop; if it hits the ground it explodes, costs a heart, and shrinks your wobble threshold for a handful of drops.",
-    image: "Art/Enemies/CatBomb1.png"
+    rain: true,
+    lightning: { minInterval: 5200, maxInterval: 7200, bolts: 4 },
+    slipThreshold: 0.28,
+    fog: null,
+    skull: true
+  },
+  6: {
+    rain: false,
+    lightning: null,
+    slipThreshold: DEFAULT_MISS_OFFSET_RATIO,
+    fog: { intervalRange: [12000, 18000], peakOpacity: 0.95, baseOpacity: 0.2, denseDrops: 2, denseDuration: 2200 },
+    skull: false,
+    sunset: true
+  },
+  7: {
+    rain: true,
+    lightning: { minInterval: 3800, maxInterval: 5200, bolts: 4 },
+    slipThreshold: 0.24,
+    fog: { intervalRange: [15000, 21000], peakOpacity: 0.78, baseOpacity: 0.28, denseDuration: 2400 },
+    skull: true
+  },
+  8: {
+    rain: true,
+    lightning: { minInterval: 3200, maxInterval: 4600, bolts: 5 },
+    slipThreshold: 0.22,
+    fog: { intervalRange: [13000, 19000], peakOpacity: 0.82, baseOpacity: 0.3, denseDuration: 2600 },
+    skull: true
   }
 };
+const SKULL_ICON_PATH = "CodexOutput/icons/CatStacker/material-symbols-skull.svg";
+const SKULL_WARNING_TEXT = "Cats may be slippery";
 
 function getLevelConfig(levelIndex = state.currentLevel) {
   const safeIndex = Math.max(0, Math.min(LEVELS.length - 1, levelIndex));
   return LEVELS[safeIndex];
+}
+
+function getLevelNumber() {
+  return state.currentLevel + 1;
 }
 
 const platform = {
@@ -232,15 +263,29 @@ const state = {
   imbalanceTrend: 0,
   dynamicThresholdLeft: BASE_COLLAPSE_THRESHOLD,
   dynamicThresholdRight: BASE_COLLAPSE_THRESHOLD,
-  enemies: [],
-  flyingSpawnAccumulator: 0,
-  bombSpawnAccumulator: 0,
-  collapseDebuffDrops: 0,
-  collapseDebuffValue: 0,
-  screenShakeTimer: 0,
-  screenShakeStrength: 0,
-  screenShakeX: 0,
-  screenShakeY: 0
+  missOffsetRatio: DEFAULT_MISS_OFFSET_RATIO,
+  lightningTimer: 0,
+  nextLightning: Infinity,
+  lightningFlash: 0,
+  lightningFlashes: [],
+  lightningShakeTimer: 0,
+  lightningDebuffTimer: 0,
+  cameraShakeX: 0,
+  cameraShakeY: 0,
+  rainDrops: [],
+  rainSpawnAccumulator: 0,
+  fogOpacity: 0,
+  fogTargetOpacity: 0,
+  fogBaseOpacity: 0,
+  fogPeakOpacity: 0,
+  fogNextTrigger: Infinity,
+  fogHoldDrops: 0,
+  fogDenseTimer: 0,
+  fogDense: false,
+  fogDenseDuration: 0,
+  fogDenseDropsRequired: 0,
+  showSun: false,
+  skullWarningVisible: false
 };
 
 state.topScore = loadPersonalBest();
@@ -281,13 +326,8 @@ function maybeUpdateTopScore() {
   }
 }
 
-function resetEnemyIntroHistory() {
-  seenEnemyIntroLevels.clear();
-}
-
 const assetCache = new Map();
 const catDefs = new Map();
-const enemyAssetCache = new Map();
 let assetsLoaded = false;
 let lastTimestamp = 0;
 
@@ -308,22 +348,7 @@ async function loadAssets() {
       };
     })
   );
-  const enemyPromises = ["FlyingCat1.png", "CatBomb1.png"].map((name) =>
-    new Promise((resolve) => {
-      const img = new Image();
-      img.src = `Art/Enemies/${name}`;
-      img.onload = () => {
-        enemyAssetCache.set(name, img);
-        resolve();
-      };
-      img.onerror = () => {
-        console.warn(`Failed to load enemy ${name}`);
-        resolve();
-      };
-    })
-  );
   await Promise.all(promises);
-  await Promise.all(enemyPromises);
   assetsLoaded = true;
   renderUnlockList();
   requestAnimationFrame(loop);
@@ -383,10 +408,8 @@ function startGame() {
   overlay.classList.add("hidden");
   startScreen.classList.add("hidden");
   victoryScreen && victoryScreen.classList.add("hidden");
-  enemyIntro && enemyIntro.classList.add("hidden");
   state.sessionScore = 0;
   state.score = 0;
-  resetEnemyIntroHistory();
   beginLevel(0, true);
 }
 
@@ -415,6 +438,8 @@ function beginLevel(levelIndex, skipOverlay = false) {
       ? LEVEL_THRESHOLDS[safeIndex]
       : LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
   const levelConfig = getLevelConfig(safeIndex);
+  const levelNumber = safeIndex + 1;
+  const levelEffect = LEVEL_EFFECTS[levelNumber] || {};
   state.backgroundGradient = levelConfig.gradient;
   state.levelBasePreviewSpeed = levelConfig.previewSpeed ?? PREVIEW_SPEED;
   state.previewSpeedCurrent = state.levelBasePreviewSpeed;
@@ -444,17 +469,50 @@ function beginLevel(levelIndex, skipOverlay = false) {
   recalcStats();
   state.imbalanceTrend = 0;
   updateDynamicThreshold();
-  state.enemies = [];
-  state.flyingSpawnAccumulator = 0;
-  state.bombSpawnAccumulator = 0;
-  state.collapseDebuffDrops = 0;
-  state.collapseDebuffValue = 0;
-  state.screenShakeTimer = 0;
-  state.screenShakeStrength = 0;
-  state.screenShakeX = 0;
-  state.screenShakeY = 0;
-  const introShown = showEnemyIntroIfNeeded(safeIndex);
-  state.mode = introShown ? "intro" : "running";
+  state.missOffsetRatio = levelEffect.slipThreshold ?? DEFAULT_MISS_OFFSET_RATIO;
+  state.skullWarningVisible = !!levelEffect.skull;
+  state.showSun = !!levelEffect.sunset;
+  if (!levelEffect.rain) {
+    state.rainDrops = [];
+  }
+  state.rainSpawnAccumulator = 0;
+  state.lightningTimer = 0;
+  state.lightningFlash = 0;
+  state.lightningFlashes = [];
+  state.lightningShakeTimer = 0;
+  state.lightningDebuffTimer = 0;
+  state.cameraShakeX = 0;
+  state.cameraShakeY = 0;
+  if (levelEffect.lightning) {
+    state.nextLightning = randomBetween(levelEffect.lightning.minInterval, levelEffect.lightning.maxInterval);
+  } else {
+    state.nextLightning = Infinity;
+  }
+  if (levelEffect.fog) {
+    const [minFog, maxFog] = levelEffect.fog.intervalRange;
+    state.fogBaseOpacity = levelEffect.fog.baseOpacity ?? 0;
+    state.fogPeakOpacity = levelEffect.fog.peakOpacity ?? 0;
+    state.fogOpacity = state.fogBaseOpacity;
+    state.fogTargetOpacity = state.fogBaseOpacity;
+    state.fogNextTrigger = randomBetween(minFog, maxFog);
+    state.fogHoldDrops = 0;
+    state.fogDenseTimer = 0;
+    state.fogDense = false;
+    state.fogDenseDuration = levelEffect.fog.denseDuration ?? 2000;
+    state.fogDenseDropsRequired = levelEffect.fog.denseDrops ?? 0;
+  } else {
+    state.fogBaseOpacity = 0;
+    state.fogPeakOpacity = 0;
+    state.fogOpacity = 0;
+    state.fogTargetOpacity = 0;
+    state.fogNextTrigger = Infinity;
+    state.fogHoldDrops = 0;
+    state.fogDenseTimer = 0;
+    state.fogDense = false;
+    state.fogDenseDuration = 0;
+    state.fogDenseDropsRequired = 0;
+  }
+  state.mode = "running";
 }
 
 function spawnPreviewCat() {
@@ -646,7 +704,7 @@ function finalizeCat(cat) {
   recalcStats();
   checkCollapse();
   state.previewName = pickRandomCat();
-  consumeCollapseDebuffDrop();
+  handleFogCatDrop();
 }
 
 function recalcStats() {
@@ -766,6 +824,10 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
 function getPlatformBounds() {
   const left = canvas.width / 2 - platform.width / 2;
   return { left, right: left + platform.width };
@@ -792,7 +854,7 @@ function getThresholdForOffset(offset) {
 function updateDynamicThreshold() {
   const shrink = Math.min(MAX_COLLAPSE_SHRINK, Math.abs(state.imbalanceTrend) * IMBALANCE_SHRINK_MULTIPLIER);
   const shrinked = Math.max(MIN_COLLAPSE_THRESHOLD, BASE_COLLAPSE_THRESHOLD - shrink);
-  const penalty = state.collapseDebuffDrops > 0 ? state.collapseDebuffValue : 0;
+  const penalty = state.lightningDebuffTimer > 0 ? BASE_COLLAPSE_THRESHOLD * 0.28 : 0;
   const effectiveThreshold = Math.max(MIN_COLLAPSE_THRESHOLD, shrinked - penalty);
   if (state.imbalanceTrend > 0) {
     state.dynamicThresholdRight = effectiveThreshold;
@@ -819,8 +881,11 @@ function clampToPlatform(x, width) {
 
 function update(deltaRatio = 1, deltaMs = GAME_FRAME_DELTA_MS) {
   if (!assetsLoaded) return;
+  const levelEffect = LEVEL_EFFECTS[getLevelNumber()] || {};
+  updateFog(deltaMs, levelEffect);
   if (state.mode === "running") {
-    updateEnemies(deltaMs);
+    updateRain(deltaMs, levelEffect);
+    updateLightning(deltaMs, levelEffect);
   }
   state.cloudOffset = (state.cloudOffset + 0.25) % 400;
   const runSpeed = Math.min(6, 1 + Math.floor(state.stack.length * 0.05));
@@ -845,14 +910,6 @@ function update(deltaRatio = 1, deltaMs = GAME_FRAME_DELTA_MS) {
   state.wobble = clamp(state.wobble, 0, WOBBLE_THRESHOLD * 1.4);
   state.imbalanceTrend *= 0.96;
   updateDynamicThreshold();
-  if (state.screenShakeTimer > 0) {
-    state.screenShakeTimer -= 1;
-    state.screenShakeX = (Math.random() * 2 - 1) * state.screenShakeStrength;
-    state.screenShakeY = (Math.random() * 2 - 1) * state.screenShakeStrength;
-  } else {
-    state.screenShakeX = 0;
-    state.screenShakeY = 0;
-  }
   updateCamera();
 }
 
@@ -864,6 +921,15 @@ function drawBackground() {
   gradient.addColorStop(1, colors[1] || colors[0]);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (state.showSun) {
+    ctx.save();
+    const sunY = canvas.height * 0.78;
+    ctx.fillStyle = "rgba(255, 215, 135, 0.85)";
+    ctx.beginPath();
+    ctx.ellipse(canvas.width / 2, sunY, 68, 68, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   drawCloud(120 + state.cloudOffset, 120, 1.2, "rgba(255,255,255,0.6)");
   drawCloud(420 - state.cloudOffset * 0.5, 160, 0.9, "rgba(255,255,255,0.55)");
@@ -878,6 +944,181 @@ function drawCloud(x, y, scale, color) {
   ctx.ellipse(x + 30 * scale, y + 4 * scale, 32 * scale, 16 * scale, 0, 0, Math.PI * 2);
   ctx.ellipse(x - 30 * scale, y + 6 * scale, 28 * scale, 14 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
+}
+
+function updateRain(deltaMs, effect) {
+  if (!effect?.rain) {
+    state.rainDrops = [];
+    state.rainSpawnAccumulator = 0;
+    return;
+  }
+  state.rainSpawnAccumulator += deltaMs * RAIN_SPAWN_RATE;
+  let spawnCount = Math.floor(state.rainSpawnAccumulator);
+  state.rainSpawnAccumulator -= spawnCount;
+  while (spawnCount > 0 && state.rainDrops.length < RAIN_DROPS) {
+    state.rainDrops.push({
+      x: Math.random() * canvas.width,
+      y: -10,
+      length: 12 + Math.random() * 18,
+      speed: 0.28 + Math.random() * 0.2,
+      drift: (Math.random() * 2 - 1) * 0.04,
+      opacity: 0.2 + Math.random() * 0.4
+    });
+    spawnCount -= 1;
+  }
+  state.rainDrops = state.rainDrops
+    .map((drop) => ({
+      ...drop,
+      y: drop.y + drop.speed * deltaMs,
+      x: drop.x + drop.drift * deltaMs
+    }))
+    .filter((drop) => drop.y < canvas.height + drop.length);
+}
+
+function drawRain() {
+  if (!state.rainDrops.length) return;
+  ctx.save();
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  state.rainDrops.forEach((drop) => {
+    ctx.globalAlpha = drop.opacity;
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.beginPath();
+    ctx.moveTo(drop.x, drop.y);
+    ctx.lineTo(drop.x + drop.drift * 12, drop.y + drop.length);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+function updateLightning(deltaMs, effect) {
+  if (!effect?.lightning) {
+    state.lightningTimer = 0;
+    return;
+  }
+  state.lightningTimer += deltaMs;
+  if (state.lightningTimer >= state.nextLightning) {
+    triggerLightningStrike(effect.lightning);
+    state.lightningTimer = 0;
+    state.nextLightning = randomBetween(effect.lightning.minInterval, effect.lightning.maxInterval);
+  }
+  if (state.lightningFlash > 0) {
+    state.lightningFlash = Math.max(0, state.lightningFlash - deltaMs * LIGHTNING_FLASH_DECAY);
+  }
+  state.lightningFlashes = state.lightningFlashes.filter((flash) => {
+    flash.progress += deltaMs;
+    return flash.progress <= flash.duration;
+  });
+  if (state.lightningShakeTimer > 0) {
+    state.lightningShakeTimer = Math.max(0, state.lightningShakeTimer - deltaMs);
+    state.cameraShakeX = (Math.random() * 2 - 1) * LIGHTNING_SHOCK_STRENGTH;
+    state.cameraShakeY = (Math.random() * 2 - 1) * LIGHTNING_SHOCK_STRENGTH;
+  } else {
+    state.cameraShakeX = 0;
+    state.cameraShakeY = 0;
+  }
+  if (state.lightningDebuffTimer > 0) {
+    state.lightningDebuffTimer = Math.max(0, state.lightningDebuffTimer - deltaMs);
+  }
+}
+
+function triggerLightningStrike(lightning) {
+  state.lightningFlash = 1;
+  state.lightningFlashes = [];
+  const bolts = lightning.bolts || 3;
+  for (let i = 0; i < bolts; i += 1) {
+    state.lightningFlashes.push({
+      x: Math.random() * canvas.width,
+      progress: 0,
+      duration: 180 + Math.random() * 160,
+      width: 2 + Math.random() * 3
+    });
+  }
+  state.lightningShakeTimer = LIGHTNING_SHAKE_DURATION;
+  state.lightningDebuffTimer = LIGHTNING_DEBUFF_MS;
+  state.wobble = Math.max(0, state.wobble - 18);
+}
+
+function drawLightning() {
+  if (state.lightningFlashes.length) {
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    state.lightningFlashes.forEach((flash) => {
+      const alpha = Math.max(0, 1 - flash.progress / flash.duration);
+      ctx.globalAlpha = alpha * 0.7;
+      ctx.strokeStyle = "rgba(255,255,255,0.6)";
+      ctx.beginPath();
+      ctx.moveTo(flash.x, -20);
+      ctx.lineTo(flash.x + (Math.random() * 2 - 1) * flash.width * 6, canvas.height + 20);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+  if (state.lightningFlash > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.45, state.lightningFlash * 0.35);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  }
+}
+
+function updateFog(deltaMs, effect) {
+  if (!effect?.fog) {
+    state.fogOpacity += (state.fogTargetOpacity - state.fogOpacity) * 0.08;
+    return;
+  }
+  if (!state.fogDense) {
+    state.fogNextTrigger -= deltaMs;
+    if (state.fogNextTrigger <= 0) {
+      state.fogDense = true;
+      state.fogTargetOpacity = state.fogPeakOpacity;
+      state.fogHoldDrops = state.fogDenseDropsRequired;
+      state.fogDenseTimer = state.fogDenseDuration;
+    }
+  } else if (state.fogDense) {
+    if (state.fogHoldDrops <= 0) {
+      state.fogDenseTimer -= deltaMs;
+      if (state.fogDenseTimer <= 0) {
+        endFogBurst(effect);
+      }
+    }
+  }
+  state.fogOpacity += (state.fogTargetOpacity - state.fogOpacity) * 0.08;
+}
+
+function endFogBurst(effect) {
+  state.fogDense = false;
+  state.fogTargetOpacity = state.fogBaseOpacity;
+  if (effect?.fog?.intervalRange) {
+    const [minFog, maxFog] = effect.fog.intervalRange;
+    state.fogNextTrigger = randomBetween(minFog, maxFog);
+  } else {
+    state.fogNextTrigger = Infinity;
+  }
+  state.fogDenseTimer = 0;
+  state.fogHoldDrops = 0;
+}
+
+function handleFogCatDrop() {
+  const effect = LEVEL_EFFECTS[getLevelNumber()] || {};
+  if (!effect.fog || !state.fogDense) return;
+  if (state.fogHoldDrops > 0) {
+    state.fogHoldDrops = Math.max(0, state.fogHoldDrops - 1);
+  }
+  if (state.fogHoldDrops <= 0 && state.fogDenseTimer <= 0) {
+    endFogBurst(effect);
+  }
+}
+
+function drawFog() {
+  if (state.fogOpacity <= 0) return;
+  ctx.save();
+  const fogColor = state.showSun ? "rgba(255, 217, 178, " : "rgba(255, 255, 255, ";
+  ctx.fillStyle = `${fogColor}${Math.min(0.7, state.fogOpacity)})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.restore();
 }
 
@@ -926,50 +1167,6 @@ function drawStack() {
   if (state.activeCat) {
     drawCat(state.activeCat);
   }
-}
-
-function drawEnemies() {
-  state.enemies.forEach((enemy) => drawEnemy(enemy));
-}
-
-function drawEnemy(enemy) {
-  if (!enemy) return;
-  if (enemy.type === "flying") {
-    drawFlyingEnemy(enemy);
-  } else {
-    drawBombEnemy(enemy);
-  }
-}
-
-function drawFlyingEnemy(enemy) {
-  const sprite = enemyAssetCache.get(enemy.sprite);
-  if (!sprite) return;
-  const size = 96;
-  ctx.save();
-  ctx.translate(enemy.x, enemy.y);
-  ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
-  ctx.restore();
-}
-
-function drawBombEnemy(enemy) {
-  const sprite = enemyAssetCache.get(enemy.sprite);
-  if (!sprite) return;
-  const size = 84;
-  ctx.save();
-  ctx.translate(enemy.x, enemy.y);
-  if (enemy.state === "hanging") {
-    ctx.strokeStyle = "rgba(15, 15, 25, 0.65)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, -size / 2 - 4);
-    ctx.lineTo(0, -size / 2 - 40);
-    ctx.stroke();
-  }
-  ctx.rotate(enemy.rotation);
-  const scale = enemy.scale || 1;
-  ctx.scale(scale, scale);
-  ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
-  ctx.restore();
 }
 
 function drawCat(cat) {
@@ -1042,7 +1239,7 @@ function buildPreviewCat(name) {
 
 function applyCameraTransform() {
   const zoom = state.cameraZoom;
-  ctx.translate(state.screenShakeX || 0, state.screenShakeY || 0);
+  ctx.translate(state.cameraShakeX || 0, state.cameraShakeY || 0);
   ctx.translate(canvas.width / 2, BASE_Y);
   ctx.scale(zoom, zoom);
   ctx.translate(-canvas.width / 2, -BASE_Y + state.cameraYOffset);
@@ -1051,13 +1248,15 @@ function applyCameraTransform() {
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground();
+  drawRain();
   ctx.save();
   applyCameraTransform();
   drawPlatform();
   drawStack();
-  drawEnemies();
   ctx.restore();
   drawPreview();
+  drawLightning();
+  drawFog();
   updateHUD();
 }
 
@@ -1076,6 +1275,12 @@ function updateHUD() {
   if (remaining <= 0 && state.mode === "running") {
     triggerCollapse();
   }
+  updateSlipperyWarning();
+}
+
+function updateSlipperyWarning() {
+  if (!slipperyWarning) return;
+  slipperyWarning.classList.toggle("hidden", !state.skullWarningVisible);
 }
 
 function updateUnlocks() {
@@ -1142,188 +1347,6 @@ function updateUnlockFill() {
   unlockFill.style.background = `linear-gradient(180deg, ${color} 0%, rgba(255,255,255,0.75) 100%)`;
 }
 
-function getLevelNumber() {
-  return state.currentLevel + 1;
-}
-
-function getFlyingSpawnInterval() {
-  const level = getLevelNumber();
-  if (level < 3) return Infinity;
-  if (level >= 5) return FLYING_SPAWN_RATES[5];
-  return FLYING_SPAWN_RATES[level] || FLYING_SPAWN_RATES[5];
-}
-
-function getBombSpawnInterval() {
-  const level = getLevelNumber();
-  if (level < 6) return Infinity;
-  return BOMB_INCREMENT_LEVELS[level] || BOMB_BASE_INTERVAL;
-}
-
-function updateEnemies(deltaMs) {
-  if (!state.enemies) {
-    state.enemies = [];
-  }
-  if (state.mode === "running") {
-    if (state.currentLevel >= 2) {
-      state.flyingSpawnAccumulator += deltaMs;
-      const interval = getFlyingSpawnInterval();
-      if (state.flyingSpawnAccumulator >= interval) {
-        spawnFlyingCat();
-        state.flyingSpawnAccumulator = 0;
-      }
-    }
-    if (state.currentLevel >= 5) {
-      state.bombSpawnAccumulator += deltaMs;
-      const interval = getBombSpawnInterval();
-      if (state.bombSpawnAccumulator >= interval) {
-        spawnBombCat();
-        state.bombSpawnAccumulator = 0;
-      }
-    }
-  }
-  for (let i = state.enemies.length - 1; i >= 0; i -= 1) {
-    const enemy = state.enemies[i];
-    if (enemy.type === "flying") {
-      updateFlyingEnemy(enemy, delta);
-    } else {
-      updateBombEnemy(enemy, delta);
-    }
-    if (enemy.remove) {
-      state.enemies.splice(i, 1);
-    }
-  }
-}
-
-function spawnFlyingCat() {
-  const sideChoices = ["left", "right", "top"];
-  const side = sideChoices[Math.floor(Math.random() * sideChoices.length)];
-  let x;
-  let y;
-  if (side === "left") {
-    x = -70;
-    y = Math.random() * (BASE_Y - 120) + 60;
-  } else if (side === "right") {
-    x = canvas.width + 70;
-    y = Math.random() * (BASE_Y - 120) + 60;
-  } else {
-    x = Math.random() * canvas.width;
-    y = -70;
-  }
-  const targetX = canvas.width / 2;
-  const targetY = BASE_Y - Math.max(80, state.stackHeight);
-  const dx = targetX - x;
-  const dy = targetY - y;
-  const distance = Math.hypot(dx, dy) || 1;
-  const dirX = dx / distance;
-  const dirY = dy / distance;
-  const level = Math.max(3, getLevelNumber());
-  const levelOffset = Math.max(0, level - 3);
-  const speed = 0.017 + levelOffset * 0.0012;
-  const swayAmplitude = 6 + Math.min(5, levelOffset);
-  const swayFrequency = 0.0004 + levelOffset * 0.00015;
-  state.enemies.push({
-    type: "flying",
-    sprite: "FlyingCat1.png",
-    x,
-    y,
-    dirX,
-    dirY,
-    targetX,
-    targetY,
-    speed,
-    swayAmplitude,
-    swayFrequency,
-    swayPhase: Math.random() * Math.PI * 2,
-    perpX: -dirY,
-    perpY: dirX,
-    radius: 36,
-    remove: false
-  });
-}
-
-function updateFlyingEnemy(enemy, delta) {
-  enemy.swayPhase += enemy.swayFrequency * delta;
-  const swayFactor = Math.sin(enemy.swayPhase) * enemy.swayAmplitude * 0.02;
-  enemy.x += enemy.dirX * enemy.speed * delta + enemy.perpX * swayFactor;
-  enemy.y += enemy.dirY * enemy.speed * delta + enemy.perpY * swayFactor;
-  const distanceToTarget = Math.hypot(enemy.x - enemy.targetX, enemy.y - enemy.targetY);
-  if (distanceToTarget < 28) {
-    state.wobble = Math.min(WOBBLE_THRESHOLD * 1.4, state.wobble + 32);
-    enemy.remove = true;
-  }
-  if (
-    enemy.x < -120 ||
-    enemy.x > canvas.width + 120 ||
-    enemy.y > canvas.height + 120
-  ) {
-    enemy.remove = true;
-  }
-}
-
-function spawnBombCat() {
-  const bounds = getPlatformBounds();
-  const leftZone = Math.random() < 0.5;
-  const x = leftZone
-    ? Math.random() * (bounds.left - 60)
-    : bounds.right + Math.random() * 60;
-  const y = Math.random() * 80 + 30;
-  const hangTime = BOMB_HANG_MIN + Math.random() * (BOMB_HANG_MAX - BOMB_HANG_MIN);
-  state.enemies.push({
-    type: "bomb",
-    sprite: "CatBomb1.png",
-    x,
-    y,
-    state: "hanging",
-    hangTime,
-    rotation: 0,
-    falling: false,
-    scale: 1,
-    shrinking: false,
-    shrinkRate: 0.0012,
-    remove: false,
-    radius: 34
-  });
-}
-
-function updateBombEnemy(enemy, delta) {
-  if (enemy.remove) return;
-  if (enemy.shrinking) {
-    enemy.scale = Math.max(0, enemy.scale - enemy.shrinkRate * delta);
-    if (enemy.scale <= 0.05) {
-      enemy.remove = true;
-    }
-    return;
-  }
-  if (enemy.state === "hanging") {
-    enemy.hangTime -= delta;
-    if (enemy.hangTime <= 0) {
-      enemy.state = "falling";
-      enemy.falling = true;
-    }
-    return;
-  }
-  if (enemy.falling) {
-    enemy.y += BOMB_FALL_SPEED * delta;
-    enemy.rotation += BOMB_ROTATION_SPEED * delta;
-    if (enemy.y > canvas.height + 40) {
-      triggerBombExplosion();
-      enemy.remove = true;
-    }
-  }
-}
-
-function triggerBombExplosion() {
-  if (state.hearts > 0) {
-    state.hearts = Math.max(0, state.hearts - 1);
-    renderHearts();
-  }
-  state.wobble = Math.max(0, state.wobble - 15);
-  state.collapseDebuffDrops = 5;
-  state.collapseDebuffValue = BOMB_PENALTY_THRESHOLD;
-  state.screenShakeTimer = SHAKE_DURATION;
-  state.screenShakeStrength = SHAKE_STRENGTH;
-}
-
 function checkVictory() {
   const isFinalLevel = state.currentLevel >= LEVELS.length - 1;
   if (isFinalLevel && state.levelScore >= state.levelThreshold) {
@@ -1354,21 +1377,6 @@ function showVictoryScreen() {
     });
   }
   victoryScreen.classList.remove("hidden");
-}
-
-function showEnemyIntroIfNeeded(levelIndex) {
-  const info = ENEMY_INTRO_STAGES[levelIndex];
-  if (!info || !enemyIntro) return false;
-  if (seenEnemyIntroLevels.has(levelIndex)) {
-    return false;
-  }
-  seenEnemyIntroLevels.add(levelIndex);
-  enemyIntroTitle.textContent = info.title;
-  enemyIntroText.textContent = info.description;
-  enemyIntroImage.src = info.image;
-  enemyIntroImage.alt = info.title;
-  enemyIntro.classList.remove("hidden");
-  return true;
 }
 
 function triggerLadderAdvance() {
@@ -1439,45 +1447,10 @@ canvas.addEventListener("pointerdown", (event) => {
   handleCanvasClick(event);
 });
 
-if (enemyIntroButton) {
-  enemyIntroButton.addEventListener("click", () => {
-    enemyIntro && enemyIntro.classList.add("hidden");
-    state.mode = "running";
-  });
-}
-
 function handleCanvasClick(event) {
   if (state.mode !== "running") return;
   event.preventDefault();
-  const worldX = screenToWorldX(event.offsetX);
-  const worldY = screenToWorldY(event.offsetY);
-  if (tryHandleEnemyClick(worldX, worldY)) {
-    return;
-  }
-}
-
-function tryHandleEnemyClick(x, y) {
-  for (let i = state.enemies.length - 1; i >= 0; i -= 1) {
-    const enemy = state.enemies[i];
-    const dx = x - enemy.x;
-    const dy = y - enemy.y;
-    const distance = Math.hypot(dx, dy);
-    const radius = enemy.radius || 36;
-    if (distance > radius) {
-      continue;
-    }
-    if (enemy.type === "flying") {
-      state.enemies.splice(i, 1);
-      state.wobble = Math.max(0, state.wobble - 10);
-      return true;
-    }
-    if (enemy.type === "bomb" && enemy.falling && !enemy.shrinking) {
-      enemy.shrinking = true;
-      enemy.shrinkRate = 0.04;
-      return true;
-    }
-  }
-  return false;
+  attemptDrop();
 }
 
 function screenToWorldX(screenX) {
@@ -1534,7 +1507,8 @@ function isMissedDrop(cat) {
   if (!state.stack.length) return false;
   const previous = state.stack[state.stack.length - 1];
   const offset = Math.abs(cat.x + cat.width / 2 - (previous.x + previous.width / 2));
-  return offset > cat.width * MISS_OFFSET_RATIO;
+  const thresholdRatio = state.missOffsetRatio || DEFAULT_MISS_OFFSET_RATIO;
+  return offset > cat.width * thresholdRatio;
 }
 
 function bounceMissedCat(cat) {
@@ -1546,17 +1520,6 @@ function bounceMissedCat(cat) {
   renderHearts();
   if (state.hearts <= 0) {
     triggerCollapse();
-  }
-  consumeCollapseDebuffDrop();
-}
-
-function consumeCollapseDebuffDrop() {
-  if (state.collapseDebuffDrops > 0) {
-    state.collapseDebuffDrops -= 1;
-    if (state.collapseDebuffDrops <= 0) {
-      state.collapseDebuffValue = 0;
-      state.collapseDebuffDrops = 0;
-    }
   }
 }
 
