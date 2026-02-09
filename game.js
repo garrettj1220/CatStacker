@@ -39,6 +39,10 @@ const PREVIEW_MOVEMENT_STEPS = 3;
 const PHYSICS_SUBSTEPS = 3;
 const PHYSICS_DT = 1 / PHYSICS_SUBSTEPS;
 const FRICTION_PER_SUBSTEP = Math.pow(DROP_VX_FRICTION, PHYSICS_DT);
+const BASE_COLLAPSE_THRESHOLD = CAT_WIDTH * 0.46;
+const MIN_COLLAPSE_THRESHOLD = CAT_WIDTH * 0.28;
+const MAX_COLLAPSE_SHRINK = BASE_COLLAPSE_THRESHOLD - MIN_COLLAPSE_THRESHOLD;
+const IMBALANCE_SHRINK_MULTIPLIER = 0.35;
 
 const CAMERA_EASE = 0.12;
 const ZOOM_MIN = 0.84;
@@ -117,7 +121,6 @@ const state = {
   stackHeight: 0,
   wobble: 0,
   wobbleTarget: 0,
-  wobbleDangerFrames: 0,
   score: 0,
   record: INITIAL_RECORD,
   collapseTimer: 0,
@@ -141,7 +144,10 @@ const state = {
   cameraYOffset: 0,
   cameraTargetYOffset: 0,
   cloudOffset: 0,
-  levelTransitioning: false
+  levelTransitioning: false,
+  imbalanceTrend: 0,
+  dynamicThresholdLeft: BASE_COLLAPSE_THRESHOLD,
+  dynamicThresholdRight: BASE_COLLAPSE_THRESHOLD
 };
 
 const assetCache = new Map();
@@ -281,6 +287,8 @@ function beginLevel(levelIndex, skipOverlay = false) {
     triggerLadderAdvance();
   }
   recalcStats();
+  state.imbalanceTrend = 0;
+  updateDynamicThreshold();
 }
 
 function spawnPreviewCat() {
@@ -330,7 +338,6 @@ function placeInitialCat(name = CAT_NAMES[0]) {
   state.levelScore = 0;
   state.wobble = 0;
   state.wobbleTarget = 0;
-  state.wobbleDangerFrames = 0;
 }
 
 function attemptDrop() {
@@ -435,6 +442,8 @@ function finalizeCat(cat) {
   const offset = center - state.centerOfGravity;
   state.offsetSum += offset;
   state.offsetCount += 1;
+  state.imbalanceTrend += (offset - state.imbalanceTrend) * 0.18;
+  updateDynamicThreshold();
   if (previous) {
     const absOffset = Math.abs(center - (previous.x + previous.width / 2));
     state.wobble = Math.min(WOBBLE_THRESHOLD * 1.2, state.wobble + absOffset * 0.8);
@@ -471,7 +480,10 @@ function recalcStats() {
   }
   const averageOffset = state.offsetSum / Math.max(1, state.offsetCount);
   state.balanceOffset = averageOffset;
-  state.wobbleTarget = Math.min(WOBBLE_THRESHOLD * 1.5, Math.abs(averageOffset) * 3);
+  const topOffset = getTopCenterOffset();
+  const threshold = getThresholdForOffset(topOffset);
+  const dangerRatio = threshold > 0 ? Math.min(1, Math.abs(topOffset) / threshold) : 1;
+  state.wobbleTarget = dangerRatio * WOBBLE_THRESHOLD;
   const height = stack.length;
   state.levelScore = Math.max(0, height - 1);
   state.score = state.levelScore;
@@ -513,20 +525,13 @@ function updateCamera() {
 function checkCollapse() {
   if (state.stack.length < 2) return;
   const boundsCheck = state.stack.every((cat) => isWithinPlatform(cat.x, cat.width));
-  const wobbleRatio = state.wobble / WOBBLE_THRESHOLD;
-  const top = state.stack[state.stack.length - 1];
-  const below = state.stack[state.stack.length - 2];
-  const topOffset = Math.abs(top.x + top.width / 2 - (below.x + below.width / 2));
-  if (wobbleRatio > 1) {
-    state.wobbleDangerFrames += 1;
-  } else {
-    state.wobbleDangerFrames = Math.max(0, state.wobbleDangerFrames - 2);
-  }
-  if (topOffset > top.width * 0.4) {
+  const topOffset = getTopCenterOffset();
+  const threshold = getThresholdForOffset(topOffset);
+  if (Math.abs(topOffset) >= threshold && threshold > 0) {
     triggerCollapse();
     return;
   }
-  if (state.wobbleDangerFrames > 22 || !boundsCheck) {
+  if (!boundsCheck) {
     triggerCollapse();
   }
 }
@@ -581,6 +586,32 @@ function getPreviewBounds() {
   };
 }
 
+function getTopCenterOffset() {
+  if (!state.stack.length) return 0;
+  const platformCenter = canvas.width / 2;
+  const top = state.stack[state.stack.length - 1];
+  return top.x + top.width / 2 - platformCenter;
+}
+
+function getThresholdForOffset(offset) {
+  return offset >= 0 ? state.dynamicThresholdRight : state.dynamicThresholdLeft;
+}
+
+function updateDynamicThreshold() {
+  const shrink = Math.min(MAX_COLLAPSE_SHRINK, Math.abs(state.imbalanceTrend) * IMBALANCE_SHRINK_MULTIPLIER);
+  const shrinked = Math.max(MIN_COLLAPSE_THRESHOLD, BASE_COLLAPSE_THRESHOLD - shrink);
+  if (state.imbalanceTrend > 0) {
+    state.dynamicThresholdRight = shrinked;
+    state.dynamicThresholdLeft = BASE_COLLAPSE_THRESHOLD;
+  } else if (state.imbalanceTrend < 0) {
+    state.dynamicThresholdLeft = shrinked;
+    state.dynamicThresholdRight = BASE_COLLAPSE_THRESHOLD;
+  } else {
+    state.dynamicThresholdLeft = BASE_COLLAPSE_THRESHOLD;
+    state.dynamicThresholdRight = BASE_COLLAPSE_THRESHOLD;
+  }
+}
+
 function isWithinPlatform(x, width) {
   const bounds = getPlatformBounds();
   const allowance = width * 0.25;
@@ -615,6 +646,8 @@ function update() {
   }
   state.wobble += (state.wobbleTarget - state.wobble) * 0.42;
   state.wobble = clamp(state.wobble, 0, WOBBLE_THRESHOLD * 1.4);
+  state.imbalanceTrend *= 0.96;
+  updateDynamicThreshold();
   updateCamera();
 }
 
