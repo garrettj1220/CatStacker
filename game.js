@@ -29,9 +29,15 @@ const shopPanel = document.getElementById("shop-panel");
 const shopCloseButton = document.getElementById("shop-close");
 const shopPointsValue = document.getElementById("shop-points-value");
 const shopPanelPoints = document.getElementById("shop-panel-points");
+const shopGrid = document.getElementById("shop-grid");
+const shopPopup = document.getElementById("shop-popup");
+const shopPopupImage = document.getElementById("shop-popup-image");
+const shopPopupText = document.getElementById("shop-popup-text");
+const shopPopupClose = document.querySelector(".shop-popup-close");
 const BEST_SURVIVAL_KEY = "catstacker-best-survival";
 const BEST_CHECKPOINT_KEY = "catstacker-best-checkpoint";
 const SHOP_POINTS_KEY = "catstacker-shop-points";
+const SHOP_PURCHASES_KEY = "catstacker-shop-purchases";
 const slipperyWarning = document.getElementById("slippery-warning");
 const victoryModeLabel = document.getElementById("victory-mode");
 const gameOverTitle = document.getElementById("game-over-title");
@@ -51,6 +57,13 @@ const CAT_NAMES = [
   "Cat8.png"
 ];
 const CAT_COLORS = ["#f6b35e", "#e89a59", "#d8896a", "#c47c7c", "#b26a86", "#a85b9b", "#9141b8", "#6f36b3"];
+const SHOP_ITEMS = [
+  { key: "terracotta", title: "Terracotta Platform", cost: 500, img: "Art/Platforms/terracottaplatform.png" },
+  { key: "tea", title: "Tea Platform", cost: 1500, img: "Art/Platforms/teaplatform.png" },
+  { key: "castle", title: "Castle Platform", cost: 3000, img: "Art/Platforms/castleplatform.png" },
+  { key: "chicken", title: "Chicken Platform", cost: 5000, img: "Art/Platforms/chickenplatform.png" },
+  { key: "human", title: "Human Platform", cost: 5000, img: "Art/Platforms/humanplatform.png" }
+];
 const INITIAL_RECORD = 0;
 const CAT_WIDTH = 160;
 const CAT_HEIGHT = 80;
@@ -310,6 +323,7 @@ const state = {
 let bestSurvivalScore = loadBestScore(BEST_SURVIVAL_KEY);
 let bestCheckpointScore = loadBestScore(BEST_CHECKPOINT_KEY);
 let shopPoints = loadShopPoints();
+const purchasedPlatforms = loadPurchasedPlatforms();
 state.topScore = loadPersonalBest();
 updateTopScoreDisplay();
 updateShopPointsDisplay();
@@ -358,6 +372,107 @@ function updateShopPointsDisplay() {
   if (shopPanelPoints) {
     shopPanelPoints.textContent = shopPoints.toString();
   }
+}
+function loadPurchasedPlatforms() {
+  try {
+    const raw = window.localStorage.getItem(SHOP_PURCHASES_KEY);
+    const parsed = JSON.parse(raw || "[]");
+    if (Array.isArray(parsed)) {
+      return new Set(parsed);
+    }
+  } catch (error) {
+    // ignore
+  }
+  return new Set();
+}
+function savePurchasedPlatforms() {
+  try {
+    window.localStorage.setItem(SHOP_PURCHASES_KEY, JSON.stringify([...purchasedPlatforms]));
+  } catch (error) {
+    // ignore
+  }
+}
+
+function closeShopPopup() {
+  if (shopPopup) {
+    shopPopup.classList.add("hidden");
+  }
+}
+
+function openShopPopup(item) {
+  if (!shopPopup || !shopPopupImage || !shopPopupText) return;
+  shopPopupImage.src = item.img;
+  shopPopupText.textContent = `${item.title} unlocked`;
+  shopPopup.classList.remove("hidden");
+}
+
+function renderShopGrid() {
+  if (!shopGrid) return;
+  shopGrid.innerHTML = "";
+  if (!SHOP_ITEMS.length) {
+    const empty = document.createElement("div");
+    empty.className = "shop-grid-empty";
+    empty.textContent = "No new items in the shop right now. Come back later.";
+    shopGrid.appendChild(empty);
+    return;
+  }
+
+  SHOP_ITEMS.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "shop-card";
+
+    const img = document.createElement("img");
+    img.src = item.img;
+    img.alt = item.title;
+
+    const overlayEl = document.createElement("div");
+    overlayEl.className = "shop-card-overlay";
+    const check = document.createElement("div");
+    check.className = "shop-card-check";
+    check.textContent = \"✓\";
+    overlayEl.appendChild(check);
+
+    const name = document.createElement("div");
+    name.className = "shop-card-name";
+    name.textContent = item.title;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.shopItem = item.key;
+
+    const isPurchased = purchasedPlatforms.has(item.key);
+    if (isPurchased) {
+      card.classList.add("is-purchased");
+      button.disabled = true;
+      button.textContent = "Purchased";
+    } else {
+      const canAfford = shopPoints >= item.cost;
+      button.disabled = !canAfford;
+      button.textContent = canAfford ? `Buy ${item.cost}` : `Need ${item.cost}`;
+      button.addEventListener("click", () => {
+        if (purchasedPlatforms.has(item.key)) return;
+        if (shopPoints < item.cost) return;
+        shopPoints -= item.cost;
+        purchasedPlatforms.add(item.key);
+        saveShopPoints();
+        savePurchasedPlatforms();
+        updateShopPointsDisplay();
+        renderShopGrid();
+        openShopPopup(item);
+      });
+    }
+
+    card.appendChild(img);
+    card.appendChild(overlayEl);
+    card.appendChild(name);
+    card.appendChild(button);
+    shopGrid.appendChild(card);
+  });
+}
+
+function pointsPerCat() {
+  // Level 1 => 1 point per cat, Level 2 => 2, etc.
+  return Math.max(1, getLevelNumber());
 }
 function addShopPoints(amount) {
   const points = Math.max(0, Math.floor(amount));
@@ -433,11 +548,15 @@ function startNewRun(mode) {
 }
 function showShopPanel() {
   hideMainMenu();
+  closeShopPopup();
   if (shopPanel) {
     shopPanel.classList.remove("hidden");
   }
+  updateShopPointsDisplay();
+  renderShopGrid();
 }
 function closeShopPanel() {
+  closeShopPopup();
   hideShopPanelOnly();
   const menu = resolveMainMenu();
   if (menu) {
@@ -874,7 +993,7 @@ function finalizeCat(cat) {
     }
   }
   state.activeCat = null;
-  state.sessionScore += 1;
+  state.sessionScore += pointsPerCat();
   recalcStats();
   checkCollapse();
   state.previewName = pickRandomCat();
@@ -1699,6 +1818,16 @@ shopPanel &&
   shopPanel.addEventListener("click", (event) => {
     if (event.target === shopPanel) {
       closeShopPanel();
+    }
+  });
+shopPopupClose &&
+  shopPopupClose.addEventListener("click", () => {
+    closeShopPopup();
+  });
+shopPopup &&
+  shopPopup.addEventListener("click", (event) => {
+    if (event.target === shopPopup) {
+      closeShopPopup();
     }
   });
 pauseResumeBtn &&

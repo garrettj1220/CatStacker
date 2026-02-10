@@ -62,7 +62,7 @@
         <div class="panel shop-panel-content">
           <header class="shop-header">
             <h1>Cosmetic Shop</h1>
-            <button id="shop-close" class="shop-close" type="button">Close</button>
+            <button id="shop-close" class="shop-close" type="button">✕</button>
           </header>
           <p class="shop-panel-points">
             Points: <span id="shop-panel-points">0</span>
@@ -70,11 +70,16 @@
           <div class="shop-categories" id="shop-categories">
             <button class="shop-category active" data-category="platforms">Platforms</button>
           </div>
-          <div class="shop-items">
-            <div class="shop-empty">
-              No new items in the shop right now—come back later for more platforms.
-            </div>
+          <div class="shop-grid" id="shop-grid">
+            <div class="shop-grid-empty">Loading items...</div>
           </div>
+        </div>
+      </div>
+      <div id="shop-popup" class="shop-popup hidden">
+        <div class="shop-popup-content">
+          <button class="shop-popup-close" type="button">✕</button>
+          <img id="shop-popup-image" alt="Platform unlocked" />
+          <p id="shop-popup-text">Unlocked</p>
         </div>
       </div>
       <div id="level-overlay" class="level-overlay hidden">
