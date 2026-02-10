@@ -114,6 +114,54 @@ canvas {
   text-transform: uppercase;
 }
 
+.wind-indicator {
+  position: absolute;
+  left: 30px;
+  bottom: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 20px rgba(22, 22, 26, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  color: #0f172a;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.wind-indicator img {
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+}
+.wind-arrow {
+  font-size: 1.05rem;
+}
+.wind-speed {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  opacity: 0.8;
+}
+
+.drop-timer {
+  position: absolute;
+  left: 30px;
+  top: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 10px 24px rgba(22, 22, 26, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  letter-spacing: 0.08em;
+}
 .main-menu {
   position: fixed;
   inset: 0;
@@ -159,52 +207,6 @@ canvas {
 @keyframes cloudDrift {
   0% { transform: translate3d(0, 0, 0); }
   100% { transform: translate3d(140vw, 0, 0); }
-}
-.menu-stack-scene {
-  position: absolute;
-  left: 8%;
-  bottom: 7%;
-  width: 520px;
-  height: 360px;
-  opacity: 0.95;
-  filter: drop-shadow(0 30px 60px rgba(26, 14, 44, 0.18));
-}
-.menu-platform {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 24px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 205, 145, 0.95), rgba(232, 125, 84, 0.95));
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.06),
-    0 20px 40px rgba(10, 6, 22, 0.12);
-}
-.menu-stack-cat {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 230px;
-  height: auto;
-  animation: stackWobble 9s ease-in-out infinite;
-}
-.menu-stack-cat.stack-cat-one { bottom: 18px; animation-delay: -0.4s; }
-.menu-stack-cat.stack-cat-two { bottom: 84px; animation-delay: -1.2s; }
-.menu-stack-cat.stack-cat-three { bottom: 150px; animation-delay: -2s; }
-@keyframes stackWobble {
-  0% { transform: translateX(-50%) rotate(-0.25deg); }
-  50% { transform: translateX(-50%) rotate(0.35deg); }
-  100% { transform: translateX(-50%) rotate(-0.25deg); }
-}
-.menu-lounge-cat {
-  position: absolute;
-  right: 8%;
-  bottom: 10%;
-  width: 260px;
-  height: auto;
-  opacity: 0.88;
-  filter: drop-shadow(0 24px 40px rgba(12, 10, 26, 0.12));
 }
 .main-menu::before,
 .main-menu::after {

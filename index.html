@@ -26,14 +26,6 @@
           <div class="menu-cloud cloud-two"></div>
           <div class="menu-cloud cloud-three"></div>
 
-          <div class="menu-stack-scene">
-            <div class="menu-platform"></div>
-            <img class="menu-stack-cat stack-cat-one" src="Art/Cats/Cat1.png" alt="" />
-            <img class="menu-stack-cat stack-cat-two" src="Art/Cats/Cat2.png" alt="" />
-            <img class="menu-stack-cat stack-cat-three" src="Art/Cats/Cat3.png" alt="" />
-          </div>
-          <img class="menu-lounge-cat" src="Art/Cats/Cat6.png" alt="" />
-
           <div class="menu-grain"></div>
         </div>
         <div class="main-menu-content">
@@ -85,6 +77,12 @@
       <div class="record-track" aria-live="polite">
         <span class="record-line top-line">Top Score: <span id="top-score-value">0</span></span>
       </div>
+      <div id="wind-indicator" class="wind-indicator hidden" aria-live="polite">
+        <img id="wind-icon" src="Art/Icons/wind.svg" alt="" />
+        <span id="wind-arrow" class="wind-arrow">→</span>
+        <span id="wind-speed" class="wind-speed">0 kph</span>
+      </div>
+      <div id="drop-timer" class="drop-timer hidden" aria-live="polite">3</div>
       <div id="shop-panel" class="overlay hidden shop-overlay">
         <div class="panel shop-panel-content">
           <header class="shop-header">

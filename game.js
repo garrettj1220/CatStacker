@@ -37,6 +37,10 @@ const shopPopupText = document.getElementById("shop-popup-text");
 const shopPopupClose = document.querySelector(".shop-popup-close");
 const audioToggleButton = document.getElementById("audio-toggle");
 const audioToggleIcon = document.getElementById("audio-toggle-icon");
+const windIndicator = document.getElementById("wind-indicator");
+const windArrowEl = document.getElementById("wind-arrow");
+const windSpeedEl = document.getElementById("wind-speed");
+const dropTimerEl = document.getElementById("drop-timer");
 const BEST_SURVIVAL_KEY = "catstacker-best-survival";
 const BEST_CHECKPOINT_KEY = "catstacker-best-checkpoint";
 const SHOP_POINTS_KEY = "catstacker-shop-points";
@@ -58,9 +62,28 @@ const CAT_NAMES = [
   "cat5.png",
   "Cat6.png",
   "Cat 7.png",
-  "Cat8.png"
+  "Cat8.png",
+  "Cat9.png",
+  "Cat10.png",
+  "Cat11.png",
+  "Cat12.png",
+  "Cat13.png"
 ];
-const CAT_COLORS = ["#f6b35e", "#e89a59", "#d8896a", "#c47c7c", "#b26a86", "#a85b9b", "#9141b8", "#6f36b3"];
+const CAT_COLORS = [
+  "#f6b35e",
+  "#e89a59",
+  "#d8896a",
+  "#c47c7c",
+  "#b26a86",
+  "#a85b9b",
+  "#9141b8",
+  "#6f36b3",
+  "#48b9a6",
+  "#59a6ff",
+  "#80c774",
+  "#f2c14e",
+  "#ff6f91"
+];
 const SHOP_ITEMS = [
   { key: "terracotta", title: "Terracotta Platform", cost: 500, img: "Art/Platforms/terracottaplatform.png" },
   { key: "tea", title: "Tea Platform", cost: 1500, img: "Art/Platforms/teaplatform.png" },
@@ -113,6 +136,9 @@ const LIGHTNING_SHOCK_STRENGTH = 5;
 const LIGHTNING_FLASH_DECAY = 0.0025;
 const RAIN_DROPS = 160;
 const RAIN_SPAWN_RATE = 0.008;
+const WIND_UI_KPH_SCALE = 1;
+const CHECKPOINT_FINAL_LEVEL = 13;
+const CHECKPOINT_FINAL_INDEX = CHECKPOINT_FINAL_LEVEL - 1;
 
 const CAMERA_EASE = 0.12;
 const ZOOM_MIN = 0.84;
@@ -201,6 +227,56 @@ const LEVELS = [
     dropDrift: 1.22,
     previewJitter: 0.28,
     dropRandomness: { amplitude: 1.1, interval: 36, variance: 16, inertia: 0.42 }
+  },
+  {
+    name: "Clearwind Day",
+    gradient: ["#c8f1ff", "#fff3c8"],
+    previewSpeed: 10.5,
+    previewDirectionChangeChance: 0.08,
+    previewDirectionCooldown: 44,
+    dropDrift: 0.7,
+    previewJitter: 0.06,
+    dropRandomness: { amplitude: 0.4, interval: 44, variance: 22, inertia: 0.34 }
+  },
+  {
+    name: "Swaying Fields",
+    gradient: ["#b8ffd6", "#ffe9b3"],
+    previewSpeed: 10.7,
+    previewDirectionChangeChance: 0.095,
+    previewDirectionCooldown: 40,
+    dropDrift: 0.82,
+    previewJitter: 0.08,
+    dropRandomness: { amplitude: 0.5, interval: 42, variance: 20, inertia: 0.34 }
+  },
+  {
+    name: "Haze Sprint",
+    gradient: ["#b6d7ff", "#f6d0ff"],
+    previewSpeed: 10.9,
+    previewDirectionChangeChance: 0.11,
+    previewDirectionCooldown: 36,
+    dropDrift: 0.95,
+    previewJitter: 0.12,
+    dropRandomness: { amplitude: 0.62, interval: 40, variance: 18, inertia: 0.36 }
+  },
+  {
+    name: "Stormwork",
+    gradient: ["#101032", "#2b1a4a"],
+    previewSpeed: 11.1,
+    previewDirectionChangeChance: 0.12,
+    previewDirectionCooldown: 34,
+    dropDrift: 1.1,
+    previewJitter: 0.14,
+    dropRandomness: { amplitude: 0.8, interval: 38, variance: 16, inertia: 0.38 }
+  },
+  {
+    name: "Countdown Crown",
+    gradient: ["#ffe6d0", "#ffd0e6"],
+    previewSpeed: 11.0,
+    previewDirectionChangeChance: 0.1,
+    previewDirectionCooldown: 38,
+    dropDrift: 0.9,
+    previewJitter: 0.1,
+    dropRandomness: { amplitude: 0.6, interval: 40, variance: 18, inertia: 0.36 }
   }
 ];
 const LEVEL_THRESHOLDS = LEVELS.map((_, idx) => 10 + idx * 5);
@@ -247,18 +323,158 @@ const LEVEL_EFFECTS = {
     slipThreshold: 0.22,
     fog: { intervalRange: [13000, 19000], peakOpacity: 0.82, baseOpacity: 0.3, denseDuration: 2600 },
     skull: true
+  },
+  9: {
+    rain: false,
+    lightning: null,
+    slipThreshold: DEFAULT_MISS_OFFSET_RATIO,
+    fog: null,
+    skull: false,
+    wind: { maxKph: 16, changeMs: [2600, 4200], push: 0.002 }
+  },
+  10: {
+    rain: false,
+    lightning: null,
+    slipThreshold: DEFAULT_MISS_OFFSET_RATIO,
+    fog: null,
+    skull: false,
+    wind: { maxKph: 22, changeMs: [2000, 3400], push: 0.0022 },
+    sway: { strength: 0.22 }
+  },
+  11: {
+    rain: false,
+    lightning: null,
+    slipThreshold: DEFAULT_MISS_OFFSET_RATIO,
+    fog: { intervalRange: [15000, 22000], peakOpacity: 0.7, baseOpacity: 0.2, denseDuration: 2200 },
+    skull: false,
+    wind: { maxKph: 24, changeMs: [1800, 3200], push: 0.0024 },
+    sway: { strength: 0.26 },
+    fastPreview: { chance: 0.22, durationMs: 1600, speedMultiplier: 1.65 }
+  },
+  12: {
+    rain: true,
+    lightning: { minInterval: 3600, maxInterval: 5200, bolts: 4 },
+    slipThreshold: 0.24,
+    fog: null,
+    skull: true,
+    wind: { maxKph: 26, changeMs: [1600, 3000], push: 0.0026 },
+    sway: { strength: 0.3 },
+    fastPreview: { chance: 0.26, durationMs: 1600, speedMultiplier: 1.8 }
+  },
+  13: {
+    rain: false,
+    lightning: null,
+    slipThreshold: DEFAULT_MISS_OFFSET_RATIO,
+    fog: null,
+    skull: false,
+    wind: null,
+    sway: null,
+    fastPreview: null,
+    dropTimer: { seconds: 3 }
   }
 };
 const SKULL_ICON_PATH = "Art/Icons/skull.svg";
 const SKULL_WARNING_TEXT = "Cats may be slippery";
 
 function getLevelConfig(levelIndex = state.currentLevel) {
-  const safeIndex = Math.max(0, Math.min(LEVELS.length - 1, levelIndex));
-  return LEVELS[safeIndex];
+  if (levelIndex < 0) return LEVELS[0];
+  if (levelIndex < LEVELS.length) return LEVELS[levelIndex];
+  return getEndlessLevelConfig(levelIndex);
 }
 
 function getLevelNumber() {
   return state.currentLevel + 1;
+}
+
+const endlessLevelConfigs = new Map();
+const endlessLevelEffects = new Map();
+
+function getEndlessLevelConfig(levelIndex) {
+  const existing = endlessLevelConfigs.get(levelIndex);
+  if (existing) return existing;
+  // Gentle escalation; keep within the feel of late-game.
+  const t = Math.max(0, levelIndex - (LEVELS.length - 1));
+  const speed = 11.0 + Math.min(1.4, t * 0.06);
+  const previewChance = 0.1 + Math.min(0.06, t * 0.002);
+  const config = {
+    name: `Survival ${levelIndex + 1}`,
+    gradient: pickEndlessGradient(levelIndex),
+    previewSpeed: speed,
+    previewDirectionChangeChance: previewChance,
+    previewDirectionCooldown: Math.max(24, 40 - Math.floor(t * 0.5)),
+    dropDrift: 0.9 + Math.min(0.8, t * 0.03),
+    previewJitter: 0.14,
+    dropRandomness: { amplitude: 0.9, interval: 36, variance: 16, inertia: 0.4 }
+  };
+  endlessLevelConfigs.set(levelIndex, config);
+  return config;
+}
+
+function pickEndlessGradient(levelIndex) {
+  const palettes = [
+    ["#0b0b2a", "#2c1a55"],
+    ["#ffe3c7", "#ffd0e6"],
+    ["#c8f1ff", "#fff3c8"],
+    ["#101032", "#2b1a4a"],
+    ["#b6d7ff", "#f6d0ff"]
+  ];
+  return palettes[levelIndex % palettes.length];
+}
+
+function getLevelEffect(levelNumber) {
+  if (levelNumber <= 13) return LEVEL_EFFECTS[levelNumber] || {};
+  if (state.gameMode !== "survival") return {};
+  return getEndlessLevelEffect(levelNumber);
+}
+
+function getEndlessLevelEffect(levelNumber) {
+  const existing = endlessLevelEffects.get(levelNumber);
+  if (existing) return existing;
+  const effect = makeRandomEndlessEffect(levelNumber);
+  endlessLevelEffects.set(levelNumber, effect);
+  return effect;
+}
+
+function makeRandomEndlessEffect(levelNumber) {
+  // Level 14+ Survival: random combinations of all mutators.
+  const roll = (p) => Math.random() < p;
+  const effect = {};
+
+  if (roll(0.55)) {
+    effect.rain = true;
+  }
+  if (roll(0.48)) {
+    effect.fog = { intervalRange: [12000, 19000], peakOpacity: 0.82, baseOpacity: 0.22, denseDuration: 2400 };
+  }
+  if (roll(0.52)) {
+    effect.lightning = { minInterval: 3200, maxInterval: 5200, bolts: 4 };
+  }
+  if (roll(0.5)) {
+    effect.slipThreshold = 0.24;
+    effect.skull = true;
+  } else {
+    effect.slipThreshold = DEFAULT_MISS_OFFSET_RATIO;
+    effect.skull = false;
+  }
+  if (roll(0.62)) {
+    effect.wind = { maxKph: 28, changeMs: [1400, 2800], push: 0.0028 };
+  }
+  if (effect.wind && roll(0.7)) {
+    effect.sway = { strength: 0.32 };
+  }
+  if (roll(0.45)) {
+    effect.fastPreview = { chance: 0.28, durationMs: 1600, speedMultiplier: 1.85 };
+  }
+  if (roll(0.4)) {
+    effect.dropTimer = { seconds: 3 };
+  }
+
+  // If we rolled lightning, lean stormy.
+  if (effect.lightning && effect.rain) {
+    effect.rain = true;
+  }
+
+  return effect;
 }
 
 const platform = {
@@ -331,7 +547,16 @@ const state = {
   fogDenseDuration: 0,
   fogDenseDropsRequired: 0,
   showSun: false,
-  skullWarningVisible: false
+  skullWarningVisible: false,
+  wind: 0,
+  windTarget: 0,
+  windTimer: 0,
+  windChangeInterval: 0,
+  sway: 0,
+  swayVelocity: 0,
+  swayBase: 0,
+  dropTimerActive: false,
+  dropTimerRemaining: 0
 };
 
 let bestSurvivalScore = loadBestScore(BEST_SURVIVAL_KEY);
@@ -844,7 +1069,7 @@ function startLevelTransition(nextLevel) {
   if (state.levelTransitioning) return;
   state.levelTransitioning = true;
   state.mode = "transition";
-  const upcomingLevelNumber = Math.min(LEVELS.length, state.currentLevel + 2);
+  const upcomingLevelNumber = Math.max(1, Math.floor(nextLevel) + 1);
   overlayLevel.textContent = upcomingLevelNumber;
   levelOverlay.classList.remove("hidden");
   requestAnimationFrame(() => levelOverlay.classList.add("visible"));
@@ -858,16 +1083,17 @@ function startLevelTransition(nextLevel) {
 }
 
 function beginLevel(levelIndex, skipOverlay = false) {
-  const safeIndex = clamp(levelIndex, 0, LEVELS.length - 1);
+  const desiredIndex = Math.max(0, Math.floor(levelIndex));
+  const safeIndex =
+    state.gameMode === "checkpoint"
+      ? clamp(desiredIndex, 0, LEVELS.length - 1)
+      : desiredIndex;
   state.currentLevel = safeIndex;
   state.levelStartScore = state.sessionScore;
-  state.levelThreshold =
-    LEVEL_THRESHOLDS[safeIndex] !== undefined
-      ? LEVEL_THRESHOLDS[safeIndex]
-      : LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+  state.levelThreshold = 10 + safeIndex * 5;
   const levelConfig = getLevelConfig(safeIndex);
   const levelNumber = safeIndex + 1;
-  const levelEffect = LEVEL_EFFECTS[levelNumber] || {};
+  const levelEffect = getLevelEffect(levelNumber);
   audioManager.onLevelChange(levelEffect);
   state.backgroundGradient = levelConfig.gradient;
   state.levelBasePreviewSpeed = levelConfig.previewSpeed ?? PREVIEW_SPEED;
@@ -883,10 +1109,18 @@ function beginLevel(levelIndex, skipOverlay = false) {
   state.cameraTargetYOffset = 0;
   state.hearts = 5;
   renderHearts();
-  placeInitialCat(getLevelCatName(safeIndex));
-  state.previewName = getLevelCatName(safeIndex);
-  state.unlockedCats = [getLevelCatName(safeIndex)];
-  state.lastUnlockedIndex = safeIndex;
+  const unlockIndex = clamp(safeIndex, 0, CAT_NAMES.length - 1);
+  const levelCatName =
+    state.gameMode === "survival" && safeIndex >= CAT_NAMES.length
+      ? pickRandomCat()
+      : getLevelCatName(safeIndex);
+  placeInitialCat(levelCatName);
+  state.previewName =
+    state.gameMode === "survival" && safeIndex >= CAT_NAMES.length
+      ? pickRandomCat()
+      : getLevelCatName(safeIndex);
+  state.unlockedCats = [getLevelCatName(unlockIndex)];
+  state.lastUnlockedIndex = unlockIndex;
   levelValue.textContent = safeIndex + 1;
   if (!skipOverlay) {
     levelOverlay.classList.add("hidden");
@@ -901,6 +1135,17 @@ function beginLevel(levelIndex, skipOverlay = false) {
   state.missOffsetRatio = levelEffect.slipThreshold ?? DEFAULT_MISS_OFFSET_RATIO;
   state.skullWarningVisible = !!levelEffect.skull;
   state.showSun = !!levelEffect.sunset;
+  state.wind = 0;
+  state.windTarget = 0;
+  state.windTimer = 0;
+  state.windChangeInterval = 0;
+  state.sway = 0;
+  state.swayVelocity = 0;
+  state.dropTimerActive = false;
+  state.dropTimerRemaining = 0;
+  state.fastPreviewRemaining = 0;
+  state.fastPreviewCooldown = 0;
+  state.previewSpeedMultiplier = 1;
   if (!levelEffect.rain) {
     state.rainDrops = [];
   }
@@ -952,6 +1197,11 @@ function spawnPreviewCat() {
 }
 
 function pickRandomCat() {
+  if (state.gameMode === "survival" && state.currentLevel >= 13) {
+    const idx = Math.floor(Math.random() * CAT_NAMES.length);
+    const name = CAT_NAMES[idx];
+    return assetCache.has(name) ? name : CAT_NAMES[0];
+  }
   const name = getLevelCatName(state.currentLevel);
   return assetCache.has(name) ? name : CAT_NAMES[0];
 }
@@ -993,7 +1243,7 @@ function placeInitialCat(name = CAT_NAMES[0]) {
   state.wobbleTarget = 0;
 }
 
-function attemptDrop() {
+function attemptDrop(forced = false) {
   if (state.mode !== "running" || state.activeCat || !assetsLoaded || state.paused) return;
   const name = state.previewName || getLevelCatName(state.currentLevel);
   const metadata = getCatMetadata(name);
@@ -1008,6 +1258,7 @@ function attemptDrop() {
     y: spawnY,
     vx: horizontalDrift,
     vy: 0,
+    forcedDrop: !!forced,
     width: CAT_WIDTH,
     height: metadata.renderHeight || CAT_HEIGHT,
     layerHeight: metadata.renderHeight || CAT_HEIGHT,
@@ -1035,7 +1286,8 @@ function attemptDrop() {
 function updatePreview() {
   if (state.activeCat || state.mode !== "running") return 0;
   const desiredBoost = Math.min(3.2, Math.max(0, (state.stack.length - 1) * 0.06));
-  const desiredSpeed = state.levelBasePreviewSpeed + desiredBoost;
+  const multiplier = state.previewSpeedMultiplier || 1;
+  const desiredSpeed = (state.levelBasePreviewSpeed + desiredBoost) * multiplier;
   state.previewSpeedCurrent += (desiredSpeed - state.previewSpeedCurrent) * PREVIEW_ACCEL;
   const levelConfig = getLevelConfig();
   if (levelConfig.previewDirectionChangeChance && state.previewDirectionCooldown <= 0) {
@@ -1071,7 +1323,7 @@ function updateActiveCat(dt = 1) {
     cat.vx = (cat.vx || 0) * FRICTION_PER_SUBSTEP;
     if (cat.y > canvas.height + 240) {
       state.activeCat = null;
-      state.previewName = getLevelCatName(state.currentLevel);
+      state.previewName = pickRandomCat();
     }
     return;
   }
@@ -1080,6 +1332,12 @@ function updateActiveCat(dt = 1) {
   cat.y += cat.vy * dt;
   cat.x += (cat.vx || 0) * dt;
   cat.vx = (cat.vx || 0) * FRICTION_PER_SUBSTEP;
+  // Wind applies only while a cat is falling.
+  const effect = state.currentEffect;
+  if (effect?.wind) {
+    const push = effect.wind.push || 0;
+    cat.vx += state.wind * push * dt;
+  }
   if (!cat.missed && cat.random && cat.random.amplitude > 0) {
     const timerDecay = dt / PHYSICS_DT;
     cat.random.timer -= timerDecay;
@@ -1096,6 +1354,11 @@ function updateActiveCat(dt = 1) {
   if (cat.y >= targetTop) {
     cat.y = targetTop;
     cat.vy = 0;
+    if (cat.forcedDrop) {
+      // Timed-out drops always bounce out and cost a life, even if aligned.
+      bounceMissedCat(cat);
+      return;
+    }
     if (isMissedDrop(cat)) {
       bounceMissedCat(cat);
       return;
@@ -1278,7 +1541,7 @@ function getTopCenterOffset() {
   if (!state.stack.length) return 0;
   const platformCenter = canvas.width / 2;
   const top = state.stack[state.stack.length - 1];
-  return top.x + top.width / 2 - platformCenter;
+  return top.x + top.width / 2 - platformCenter + (state.sway || 0);
 }
 
 function getThresholdForOffset(offset) {
@@ -1316,11 +1579,16 @@ function clampToPlatform(x, width) {
 function update(deltaRatio = 1, deltaMs = GAME_FRAME_DELTA_MS) {
   if (!assetsLoaded) return;
   if (state.paused) return;
-  const levelEffect = LEVEL_EFFECTS[getLevelNumber()] || {};
+  const levelEffect = getLevelEffect(getLevelNumber());
+  state.currentEffect = levelEffect;
   updateFog(deltaMs, levelEffect);
   if (state.mode === "running") {
     updateRain(deltaMs, levelEffect);
     updateLightning(deltaMs, levelEffect);
+    updateWind(deltaMs, levelEffect);
+    updateSway(deltaMs, levelEffect);
+    updateFastPreview(deltaMs, levelEffect);
+    updateDropTimer(deltaMs, levelEffect);
   }
   state.cloudOffset = (state.cloudOffset + 0.25) % 400;
   const runSpeed = Math.min(6, 1 + Math.floor(state.stack.length * 0.05));
@@ -1350,12 +1618,14 @@ function update(deltaRatio = 1, deltaMs = GAME_FRAME_DELTA_MS) {
 
 function drawBackground() {
   const colors = state.backgroundGradient || LEVELS[0].gradient;
+  const effect = state.currentEffect || getLevelEffect(getLevelNumber()) || {};
   const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
   gradient.addColorStop(0, colors[0]);
   gradient.addColorStop(0.55, colors[1] || colors[0]);
   gradient.addColorStop(1, colors[1] || colors[0]);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawBackgroundAccents(effect, colors);
   if (state.showSun) {
     ctx.save();
     const sunY = canvas.height * 0.78;
@@ -1369,6 +1639,57 @@ function drawBackground() {
   drawCloud(120 + state.cloudOffset, 120, 1.2, "rgba(255,255,255,0.6)");
   drawCloud(420 - state.cloudOffset * 0.5, 160, 0.9, "rgba(255,255,255,0.55)");
   drawCloud(720 + state.cloudOffset * 0.25, 110, 0.8, "rgba(255,255,255,0.5)");
+}
+
+function drawBackgroundAccents(effect, colors) {
+  // Keep this subtle. It's background storytelling, not gameplay UI.
+  const top = colors?.[0] || "#ffffff";
+  const isNight = /^#0/i.test(top) || /^#03/i.test(top) || /^#04/i.test(top) || /^#05/i.test(top) || !!effect?.lightning;
+
+  if (isNight) {
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    for (let i = 0; i < 36; i += 1) {
+      const x = (i * 73 + 40) % canvas.width;
+      const y = (i * 29 + 18) % 220;
+      const r = (i % 3) + 0.8;
+      ctx.beginPath();
+      ctx.ellipse(x, y, r, r, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  if (effect?.wind) {
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.lineWidth = 2;
+    const dir = state.wind >= 0 ? 1 : -1;
+    for (let i = 0; i < 12; i += 1) {
+      const baseY = 120 + i * 34;
+      const phase = (state.cloudOffset * 0.6 + i * 60) % (canvas.width + 200);
+      const x = dir > 0 ? phase - 140 : canvas.width - phase + 140;
+      ctx.beginPath();
+      ctx.moveTo(x, baseY);
+      ctx.quadraticCurveTo(x + dir * 36, baseY - 10, x + dir * 80, baseY + 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  if (effect?.rain || effect?.lightning) {
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = "rgba(10,12,20,0.55)";
+    ctx.beginPath();
+    ctx.ellipse(canvas.width * 0.25, 80, 180, 70, 0, 0, Math.PI * 2);
+    ctx.ellipse(canvas.width * 0.6, 70, 240, 90, 0, 0, Math.PI * 2);
+    ctx.ellipse(canvas.width * 0.85, 90, 180, 70, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 function drawCloud(x, y, scale, color) {
@@ -1538,8 +1859,123 @@ function endFogBurst(effect) {
   state.fogHoldDrops = 0;
 }
 
+function updateWind(deltaMs, effect) {
+  const hasWind = !!effect?.wind;
+  if (!hasWind) {
+    state.wind = 0;
+    state.windTarget = 0;
+    state.windTimer = 0;
+    state.windChangeInterval = 0;
+    if (windIndicator) windIndicator.classList.add("hidden");
+    return;
+  }
+
+  if (windIndicator) windIndicator.classList.remove("hidden");
+
+  const maxKph = Math.max(1, effect.wind.maxKph || 10);
+  state.windTimer -= deltaMs;
+  if (state.windTimer <= 0) {
+    const [minMs, maxMs] = effect.wind.changeMs || [2200, 4200];
+    state.windChangeInterval = randomBetween(minMs, maxMs);
+    state.windTimer = state.windChangeInterval;
+    const raw = randomBetween(-maxKph, maxKph);
+    const floor = maxKph * 0.18;
+    state.windTarget = Math.abs(raw) < floor ? Math.sign(raw || 1) * floor : raw;
+  }
+
+  const alpha = clamp(deltaMs / 900, 0, 1);
+  state.wind += (state.windTarget - state.wind) * alpha;
+
+  const kph = Math.round(Math.abs(state.wind) * WIND_UI_KPH_SCALE);
+  const dir = state.wind >= 0 ? "→" : "←";
+  if (windArrowEl) windArrowEl.textContent = dir;
+  if (windSpeedEl) windSpeedEl.textContent = `${kph} kph`;
+}
+
+function updateSway(deltaMs, effect) {
+  const strength = effect?.sway?.strength || 0;
+  if (!strength) {
+    state.swayVelocity *= 0.9;
+    state.sway += (0 - state.sway) * clamp(deltaMs / 600, 0, 1);
+    if (Math.abs(state.sway) < 0.05) state.sway = 0;
+    return;
+  }
+
+  const maxKph = Math.max(1, effect?.wind?.maxKph || 20);
+  const normalized = clamp(state.wind / maxKph, -1, 1);
+  const amplitude = CAT_WIDTH * 0.38 * strength;
+  const target = normalized * amplitude;
+
+  const accel = (target - state.sway) * 0.0035 * deltaMs;
+  state.swayVelocity += accel;
+  state.swayVelocity *= 0.92;
+  state.sway += state.swayVelocity;
+  state.sway = clamp(state.sway, -amplitude, amplitude);
+}
+
+function updateFastPreview(deltaMs, effect) {
+  const config = effect?.fastPreview;
+  if (!config) {
+    state.fastPreviewRemaining = 0;
+    state.fastPreviewCooldown = 0;
+    state.previewSpeedMultiplier = 1;
+    return;
+  }
+
+  state.fastPreviewCooldown = Math.max(0, (state.fastPreviewCooldown || 0) - deltaMs);
+  state.fastPreviewRemaining = Math.max(0, (state.fastPreviewRemaining || 0) - deltaMs);
+
+  if (state.fastPreviewRemaining > 0) {
+    state.previewSpeedMultiplier = config.speedMultiplier || 1.6;
+    return;
+  }
+
+  state.previewSpeedMultiplier = 1;
+  if (state.fastPreviewCooldown > 0) return;
+
+  const chancePerSecond = Math.max(0, config.chance || 0);
+  if (Math.random() < chancePerSecond * (deltaMs / 1000)) {
+    state.fastPreviewRemaining = Math.max(200, config.durationMs || 1200);
+    state.fastPreviewCooldown = randomBetween(2600, 5200);
+  }
+}
+
+function updateDropTimer(deltaMs, effect) {
+  const config = effect?.dropTimer;
+  if (!config) {
+    state.dropTimerActive = false;
+    state.dropTimerRemaining = 0;
+    if (dropTimerEl) dropTimerEl.classList.add("hidden");
+    return;
+  }
+
+  if (state.activeCat) {
+    if (dropTimerEl) dropTimerEl.classList.add("hidden");
+    state.dropTimerActive = false;
+    return;
+  }
+
+  if (!state.dropTimerActive) {
+    state.dropTimerActive = true;
+    state.dropTimerRemaining = Math.max(1, (config.seconds || 3) * 1000);
+  }
+
+  state.dropTimerRemaining -= deltaMs;
+  const secondsLeft = Math.max(0, Math.ceil(state.dropTimerRemaining / 1000));
+  if (dropTimerEl) {
+    dropTimerEl.textContent = String(secondsLeft);
+    dropTimerEl.classList.toggle("hidden", secondsLeft <= 0);
+  }
+
+  if (state.dropTimerRemaining <= 0) {
+    state.dropTimerActive = false;
+    state.dropTimerRemaining = 0;
+    attemptDrop(true);
+  }
+}
+
 function handleFogCatDrop() {
-  const effect = LEVEL_EFFECTS[getLevelNumber()] || {};
+  const effect = state.currentEffect || getLevelEffect(getLevelNumber()) || {};
   if (!effect.fog || !state.fogDense) return;
   if (state.fogHoldDrops > 0) {
     state.fogHoldDrops = Math.max(0, state.fogHoldDrops - 1);
@@ -1729,8 +2165,10 @@ function updateUnlocks() {
 
 function checkLevelProgress() {
   if (state.levelTransitioning || state.mode !== "running") return;
-  if (state.currentLevel >= LEVELS.length - 1) {
-    checkVictory();
+  if (state.gameMode === "checkpoint" && state.currentLevel >= CHECKPOINT_FINAL_INDEX) {
+    if (state.levelScore >= state.levelThreshold) {
+      checkVictory();
+    }
     return;
   }
   if (state.levelScore >= state.levelThreshold) {
@@ -1784,8 +2222,9 @@ function updateUnlockFill() {
 }
 
 function checkVictory() {
-  const isFinalLevel = state.currentLevel >= LEVELS.length - 1;
-  if (isFinalLevel && state.levelScore >= state.levelThreshold) {
+  const isFinalCheckpoint =
+    state.gameMode === "checkpoint" && state.currentLevel >= CHECKPOINT_FINAL_INDEX;
+  if (isFinalCheckpoint && state.levelScore >= state.levelThreshold) {
     state.mode = "victory";
     state.record = Math.max(state.record, state.score);
     maybeUpdateTopScore();
@@ -1806,7 +2245,10 @@ function showVictoryScreen() {
       ? "Checkpoint Run"
       : "Survival";
   if (victoryModeLabel) {
-    victoryModeLabel.textContent = `You beat CatStacker in ${modeLabel}.`;
+    victoryModeLabel.textContent =
+      state.gameMode === "checkpoint"
+        ? "Checkpoint Run complete. Go play Survival for more!"
+        : `You beat CatStacker in ${modeLabel}.`;
   }
   if (victoryGallery) {
     victoryGallery.innerHTML = "";
