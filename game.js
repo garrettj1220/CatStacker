@@ -429,7 +429,7 @@ function renderShopGrid() {
     overlayEl.className = "shop-card-overlay";
     const check = document.createElement("div");
     check.className = "shop-card-check";
-    check.textContent = \"✓\";
+    check.textContent = "✓";
     overlayEl.appendChild(check);
 
     const name = document.createElement("div");
