@@ -167,7 +167,11 @@ canvas {
   inset: 0;
   width: 100vw;
   min-height: 100vh;
-  background: radial-gradient(circle at 20% 10%, #fff3fb, #f6f7ff 45%, #fbf0ff 85%);
+  background:
+    radial-gradient(circle at 18% 14%, rgba(255, 219, 188, 0.92), rgba(255, 219, 188, 0) 58%),
+    radial-gradient(circle at 82% 16%, rgba(195, 232, 255, 0.9), rgba(195, 232, 255, 0) 55%),
+    radial-gradient(circle at 50% 80%, rgba(255, 226, 247, 0.75), rgba(255, 226, 247, 0) 60%),
+    linear-gradient(180deg, #bfeaff 0%, #f6e9ff 38%, #ffe4cf 72%, #fff7ee 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -180,6 +184,19 @@ canvas {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
+}
+.menu-world::after {
+  content: "";
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  bottom: -18%;
+  height: 60%;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(64, 116, 140, 0.0) 0%, rgba(64, 116, 140, 0.0) 48%, rgba(64, 116, 140, 0.12) 70%, rgba(18, 47, 74, 0.18) 100%),
+    radial-gradient(ellipse at 20% 40%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 60%);
+  filter: blur(0.2px);
+  opacity: 0.9;
 }
 .menu-grain {
   position: absolute;
@@ -196,7 +213,7 @@ canvas {
   position: absolute;
   width: 340px;
   height: 180px;
-  background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.95), rgba(255,255,255,0.0) 70%);
+  background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.9), rgba(255,255,255,0.0) 70%);
   filter: blur(0.4px);
   opacity: 0.75;
   animation: cloudDrift 22s linear infinite;
@@ -214,13 +231,13 @@ canvas {
   position: absolute;
   inset: -40%;
   background: radial-gradient(circle, rgba(255, 255, 255, 0.6), transparent 60%);
-  opacity: 0.45;
+  opacity: 0.26;
   filter: blur(0);
   animation: luminanceShift 16s ease-in-out infinite;
   pointer-events: none;
 }
 .main-menu::after {
-  background: radial-gradient(circle at 20% 30%, rgba(255, 212, 174, 0.25), transparent 50%);
+  background: radial-gradient(circle at 20% 30%, rgba(255, 194, 150, 0.22), transparent 52%);
   animation-duration: 18s;
 }
 .main-menu-content {
@@ -232,7 +249,8 @@ canvas {
   align-items: center;
   padding: 44px 44px;
   border-radius: 34px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.32));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.34));
   box-shadow: 0 30px 90px rgba(35, 27, 58, 0.22);
   backdrop-filter: blur(18px);
   border: 1px solid rgba(255, 255, 255, 0.6);
@@ -319,6 +337,8 @@ canvas {
   grid-template-columns: repeat(3, minmax(70px, 1fr));
   gap: 18px;
   margin-bottom: 26px;
+  position: relative;
+  z-index: 2;
 }
 .cat-card {
   height: 76px;
@@ -555,6 +575,9 @@ canvas {
   border: 1px solid rgba(255, 255, 255, 0.7);
   box-shadow: 0 18px 50px rgba(17, 7, 44, 0.14);
   position: relative;
+  z-index: 1;
+  overflow: hidden;
+  isolation: isolate;
 }
 .menu-preview-platform {
   height: 18px;
