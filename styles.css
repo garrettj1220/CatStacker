@@ -462,7 +462,8 @@ canvas {
   background: rgba(8, 6, 18, 0.85);
 }
 .shop-panel-content {
-  width: min(520px, 90vw);
+  width: min(1100px, 94vw);
+  max-height: min(86vh, 820px);
   padding: 40px 42px;
   border-radius: 26px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(244, 245, 252, 0.95));
@@ -471,6 +472,7 @@ canvas {
   flex-direction: column;
   gap: 18px;
   text-align: left;
+  overflow: auto;
 }
 .shop-header {
   display: flex;
@@ -494,6 +496,9 @@ canvas {
   font-weight: 700;
   color: #1d0f41;
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  line-height: 1;
 }
 .shop-panel-points {
   font-size: 0.9rem;
