@@ -91,3 +91,9 @@ Original prompt: ok build it the first version! use our web game building skill
 
 ## Tests (best score init order)
 - Same two Playwright runs as above (Survival and Checkpoint selectors, each with the standard action payload) were rerun after the fix to confirm the page loads without errors and both buttons start their respective game modes; outputs still land under `CodexOutput/tests`.
+
+## Updates (game-over overlay cleanup)
+- Removed the duplicated `#game-over` panel so there’s only one overlay with the buttons that `game.js` binds to; reintroduced the `final-level`, `final-height`, and `final-score` elements inside that panel so the scoreboard and save logic keep working when the overlay is shown. This ensures the “Play Again” / “Main Menu” buttons are attached to the visible overlay and the checkpoint restart flow can trigger again.
+
+## Tests (game-over overlay cleanup)
+- `cd CatStacker && nohup npm run start >/tmp/catstacker.log 2>&1 & server_pid=$!; sleep 1; node $CODEX_HOME/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#mode-survival" --actions-file $CODEX_HOME/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests; node $CODEX_HOME/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:4173/index.html --click-selector "#mode-checkpoint" --actions-file $CODEX_HOME/skills/develop-web-game/references/action_payloads.json --iterations 3 --pause-ms 250 --screenshot-dir CodexOutput/tests; kill $server_pid` (passes; the `MODULE_TYPELESS_PACKAGE_JSON` warning still appears but both sequences succeed and refresh `CodexOutput/tests`).
