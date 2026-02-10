@@ -21,13 +21,32 @@
     <main>
       <canvas id="game-canvas" width="960" height="640"></canvas>
       <div id="main-menu" class="main-menu">
+        <div class="menu-world" aria-hidden="true">
+          <div class="menu-cloud cloud-one"></div>
+          <div class="menu-cloud cloud-two"></div>
+          <div class="menu-cloud cloud-three"></div>
+
+          <div class="menu-stack-scene">
+            <div class="menu-platform"></div>
+            <img class="menu-stack-cat stack-cat-one" src="Art/Cats/Cat1.png" alt="" />
+            <img class="menu-stack-cat stack-cat-two" src="Art/Cats/Cat2.png" alt="" />
+            <img class="menu-stack-cat stack-cat-three" src="Art/Cats/Cat3.png" alt="" />
+            <img class="menu-drop-cat" src="Art/Cats/Cat4.png" alt="" />
+          </div>
+
+          <img class="menu-roamer roamer-one" src="Art/Cats/Cat6.png" alt="" />
+          <img class="menu-roamer roamer-two" src="Art/Cats/cat5.png" alt="" />
+          <img class="menu-roamer roamer-three" src="Art/Cats/Cat8.png" alt="" />
+
+          <div class="menu-grain"></div>
+        </div>
         <div class="main-menu-content">
+          <button id="audio-toggle" class="audio-toggle" type="button" aria-label="Toggle audio" aria-pressed="false">
+            <img id="audio-toggle-icon" src="Art/Icons/volume-on.svg" alt="" />
+          </button>
           <div class="main-menu-headline">
             <h1>CatStacker</h1>
             <p class="menu-lede">Stack cats. Its fun.</p>
-            <button id="audio-toggle" class="audio-toggle" type="button" aria-label="Toggle audio" aria-pressed="false">
-              <img id="audio-toggle-icon" src="Art/Icons/volume-on.svg" alt="" />
-            </button>
           </div>
           <div class="cat-grid" aria-hidden="true">
             <div class="cat-card cat-card-one"></div>
