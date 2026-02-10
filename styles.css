@@ -279,9 +279,19 @@ canvas {
 }
 .shop-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   width: 100%;
+}
+@media (max-width: 880px) {
+  .shop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .shop-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .shop-card {
   background: white;
@@ -462,7 +472,7 @@ canvas {
   background: rgba(8, 6, 18, 0.85);
 }
 .shop-panel-content {
-  width: min(1100px, 94vw);
+  width: min(1400px, 96vw);
   max-height: min(86vh, 820px);
   padding: 40px 42px;
   border-radius: 26px;

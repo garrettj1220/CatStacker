@@ -604,6 +604,8 @@ function pointsPerCat() {
   return Math.max(1, getLevelNumber());
 }
 function addShopPoints(amount) {
+  // Defensive check: only Survival mode contributes to shop points.
+  if (state.gameMode !== "survival") return;
   const points = Math.max(0, Math.floor(amount));
   if (points <= 0) return;
   shopPoints += points;
@@ -1244,9 +1246,8 @@ function endRun() {
   finalScore.textContent = state.score;
   finalLevel.textContent = state.currentLevel + 1;
   recordModeBest(state.score);
-  if (state.gameMode === "survival") {
-    addShopPoints(state.score);
-  }
+  // Shop points are earned only in Survival.
+  if (state.gameMode === "survival") addShopPoints(state.score);
   showGameOverPanel();
   state.paused = false;
   overlay.classList.remove("hidden");
@@ -1796,9 +1797,8 @@ function checkVictory() {
 function showVictoryScreen() {
   overlay.classList.add("hidden");
   recordModeBest(state.score);
-  if (state.gameMode === "survival") {
-    addShopPoints(state.score);
-  }
+  // Shop points are earned only in Survival.
+  if (state.gameMode === "survival") addShopPoints(state.score);
   if (!victoryScreen) return;
   const modeLabel =
     state.gameMode === "checkpoint"
