@@ -34,10 +34,13 @@ const shopPopup = document.getElementById("shop-popup");
 const shopPopupImage = document.getElementById("shop-popup-image");
 const shopPopupText = document.getElementById("shop-popup-text");
 const shopPopupClose = document.querySelector(".shop-popup-close");
+const audioToggleButton = document.getElementById("audio-toggle");
+const audioToggleIcon = document.getElementById("audio-toggle-icon");
 const BEST_SURVIVAL_KEY = "catstacker-best-survival";
 const BEST_CHECKPOINT_KEY = "catstacker-best-checkpoint";
 const SHOP_POINTS_KEY = "catstacker-shop-points";
 const SHOP_PURCHASES_KEY = "catstacker-shop-purchases";
+const AUDIO_MUTED_KEY = "catstacker-audio-muted";
 const slipperyWarning = document.getElementById("slippery-warning");
 const victoryModeLabel = document.getElementById("victory-mode");
 const gameOverTitle = document.getElementById("game-over-title");
@@ -64,6 +67,16 @@ const SHOP_ITEMS = [
   { key: "chicken", title: "Chicken Platform", cost: 5000, img: "Art/Platforms/chickenplatform.png" },
   { key: "human", title: "Human Platform", cost: 5000, img: "Art/Platforms/humanplatform.png" }
 ];
+const AUDIO_ICON_ON = "Art/Icons/volume-on.svg";
+const AUDIO_ICON_OFF = "Art/Icons/volume-off.svg";
+const AUDIO_PATHS = {
+  ambience: "Art/Audio/ambience.wav",
+  rain: "Art/Audio/rain.wav",
+  click: "Art/Audio/click.wav",
+  drop: "Art/Audio/drop.wav",
+  unlock: "Art/Audio/unlock.wav",
+  lightning: "Art/Audio/lightning.wav"
+};
 const INITIAL_RECORD = 0;
 const CAT_WIDTH = 160;
 const CAT_HEIGHT = 80;
@@ -235,7 +248,7 @@ const LEVEL_EFFECTS = {
     skull: true
   }
 };
-const SKULL_ICON_PATH = "CodexOutput/icons/CatStacker/material-symbols-skull.svg";
+const SKULL_ICON_PATH = "Art/Icons/skull.svg";
 const SKULL_WARNING_TEXT = "Cats may be slippery";
 
 function getLevelConfig(levelIndex = state.currentLevel) {
@@ -393,6 +406,120 @@ function savePurchasedPlatforms() {
   }
 }
 
+function loadAudioMuted() {
+  try {
+    return window.localStorage.getItem(AUDIO_MUTED_KEY) === "1";
+  } catch (error) {
+    // ignore
+  }
+  return false;
+}
+
+function saveAudioMuted() {
+  try {
+    window.localStorage.setItem(AUDIO_MUTED_KEY, audioMuted ? "1" : "0");
+  } catch (error) {
+    // ignore
+  }
+}
+
+let audioMuted = loadAudioMuted();
+updateAudioToggleUI();
+
+function updateAudioToggleUI() {
+  if (!audioToggleButton || !audioToggleIcon) return;
+  audioToggleButton.classList.toggle("is-muted", audioMuted);
+  audioToggleButton.setAttribute("aria-pressed", audioMuted ? "true" : "false");
+  audioToggleIcon.src = audioMuted ? AUDIO_ICON_OFF : AUDIO_ICON_ON;
+}
+
+const audioManager = (() => {
+  let unlocked = false;
+
+  const ambience = new Audio(AUDIO_PATHS.ambience);
+  ambience.loop = true;
+  ambience.volume = 0.18;
+
+  const rain = new Audio(AUDIO_PATHS.rain);
+  rain.loop = true;
+  rain.volume = 0.0;
+
+  function playLoop(track) {
+    if (!unlocked || audioMuted) return;
+    if (!track.paused) return;
+    track.play().catch(() => {});
+  }
+
+  function stopLoop(track) {
+    track.pause();
+    track.currentTime = 0;
+  }
+
+  function playOneShot(path, volume) {
+    if (!unlocked || audioMuted) return;
+    const clip = new Audio(path);
+    clip.volume = volume;
+    clip.play().catch(() => {});
+  }
+
+  function setRainActive(active) {
+    if (!unlocked || audioMuted) {
+      rain.volume = 0.0;
+      stopLoop(rain);
+      return;
+    }
+    if (active) {
+      rain.volume = 0.22;
+      playLoop(rain);
+    } else {
+      rain.volume = 0.0;
+      stopLoop(rain);
+    }
+  }
+
+  function unlockAudio() {
+    if (unlocked) return;
+    unlocked = true;
+    playLoop(ambience);
+  }
+
+  function setMuted(muted) {
+    audioMuted = muted;
+    saveAudioMuted();
+    updateAudioToggleUI();
+    if (audioMuted) {
+      stopLoop(ambience);
+      stopLoop(rain);
+      return;
+    }
+    if (unlocked) {
+      playLoop(ambience);
+    }
+  }
+
+  function onLevelChange(effect) {
+    setRainActive(!!effect?.rain);
+  }
+
+  return {
+    unlockAudio,
+    setMuted,
+    onLevelChange,
+    click() {
+      playOneShot(AUDIO_PATHS.click, 0.2);
+    },
+    drop() {
+      playOneShot(AUDIO_PATHS.drop, 0.22);
+    },
+    unlock() {
+      playOneShot(AUDIO_PATHS.unlock, 0.28);
+    },
+    lightning() {
+      playOneShot(AUDIO_PATHS.lightning, 0.3);
+    }
+  };
+})();
+
 function closeShopPopup() {
   if (shopPopup) {
     shopPopup.classList.add("hidden");
@@ -404,6 +531,8 @@ function openShopPopup(item) {
   shopPopupImage.src = item.img;
   shopPopupText.textContent = `${item.title} unlocked`;
   shopPopup.classList.remove("hidden");
+  audioManager.unlockAudio();
+  audioManager.unlock();
 }
 
 function renderShopGrid() {
@@ -531,6 +660,7 @@ function showMainMenu() {
   state.levelStartScore = 0;
   updateMenuBestScores();
   updateTopScoreDisplay();
+  audioManager.onLevelChange(null);
 }
 function hideMainMenu() {
   const menu = resolveMainMenu();
@@ -544,6 +674,7 @@ function startNewRun(mode) {
   updateTopScoreDisplay();
   hideMainMenu();
   state.paused = false;
+  audioManager.unlockAudio();
   startGame();
 }
 function showShopPanel() {
@@ -554,6 +685,7 @@ function showShopPanel() {
   }
   updateShopPointsDisplay();
   renderShopGrid();
+  audioManager.unlockAudio();
 }
 function closeShopPanel() {
   closeShopPopup();
@@ -733,6 +865,7 @@ function beginLevel(levelIndex, skipOverlay = false) {
   const levelConfig = getLevelConfig(safeIndex);
   const levelNumber = safeIndex + 1;
   const levelEffect = LEVEL_EFFECTS[levelNumber] || {};
+  audioManager.onLevelChange(levelEffect);
   state.backgroundGradient = levelConfig.gradient;
   state.levelBasePreviewSpeed = levelConfig.previewSpeed ?? PREVIEW_SPEED;
   state.previewSpeedCurrent = state.levelBasePreviewSpeed;
@@ -994,6 +1127,7 @@ function finalizeCat(cat) {
   }
   state.activeCat = null;
   state.sessionScore += pointsPerCat();
+  audioManager.drop();
   recalcStats();
   checkCollapse();
   state.previewName = pickRandomCat();
@@ -1325,6 +1459,7 @@ function updateLightning(deltaMs, effect) {
 function triggerLightningStrike(lightning) {
   state.lightningFlash = 1;
   state.lightningFlashes = [];
+  audioManager.lightning();
   const bolts = lightning.bolts || 3;
   for (let i = 0; i < bolts; i += 1) {
     state.lightningFlashes.push({
@@ -1795,6 +1930,8 @@ function setupMainMenuModeHandlers() {
     const mode = button.dataset.mode;
     if (!mode) return;
     event.preventDefault();
+    audioManager.unlockAudio();
+    audioManager.click();
     startNewRun(mode);
   });
   mainMenuHandlersBound = true;
@@ -1808,7 +1945,16 @@ if (document.readyState === "loading") {
 shopButton &&
   shopButton.addEventListener("click", (event) => {
     event.preventDefault();
+    audioManager.unlockAudio();
+    audioManager.click();
     showShopPanel();
+  });
+audioToggleButton &&
+  audioToggleButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    audioManager.unlockAudio();
+    audioManager.click();
+    audioManager.setMuted(!audioMuted);
   });
 shopCloseButton &&
   shopCloseButton.addEventListener("click", () => {

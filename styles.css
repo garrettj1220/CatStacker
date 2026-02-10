@@ -144,6 +144,7 @@ canvas {
   flex-direction: column;
   gap: 10px;
   align-items: center;
+  position: relative;
 }
 .main-menu h1 {
   font-size: 3.5rem;
@@ -156,6 +157,44 @@ canvas {
   font-size: 1rem;
   color: #3a3445;
   font-family: "Fraunces", "Space Grotesk", serif;
+}
+
+.audio-toggle {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.audio-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.2);
+}
+.audio-toggle:active {
+  transform: translateY(0);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+}
+.audio-toggle img {
+  width: 24px;
+  height: 24px;
+  opacity: 0.85;
+}
+.audio-toggle.is-muted::after {
+  content: "";
+  position: absolute;
+  width: 30px;
+  height: 3px;
+  background: rgba(15, 23, 42, 0.65);
+  border-radius: 999px;
+  transform: rotate(-35deg);
 }
 .cat-grid {
   display: grid;
