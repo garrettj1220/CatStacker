@@ -208,6 +208,36 @@ canvas {
   font-size: 0.85rem;
   letter-spacing: 0.1em;
 }
+.shop-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+.shop-btn {
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: none;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: linear-gradient(120deg, #38bdf8, #4c1d95);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(56, 189, 248, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.shop-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(30, 64, 175, 0.4);
+}
+.shop-points-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #4c1d95;
+}
 .menu-credit {
   margin-top: 22px;
   font-size: 0.75rem;
@@ -277,6 +307,86 @@ canvas {
 }
 .overlay-actions button:hover {
   transform: translateY(-2px);
+}
+.shop-overlay {
+  background: rgba(8, 6, 18, 0.85);
+}
+.shop-panel-content {
+  width: min(520px, 90vw);
+  padding: 40px 42px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(244, 245, 252, 0.95));
+  box-shadow: 0 30px 70px rgba(12, 8, 28, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  text-align: left;
+}
+.shop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.shop-header h1 {
+  font-size: 1.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin: 0;
+  color: #1d0f41;
+}
+.shop-close {
+  background: transparent;
+  border: 1px solid rgba(29, 15, 65, 0.4);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-weight: 700;
+  color: #1d0f41;
+  cursor: pointer;
+}
+.shop-panel-points {
+  font-size: 0.9rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #4c1d95;
+}
+.shop-categories {
+  display: flex;
+  gap: 8px;
+}
+.shop-category {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(29, 15, 65, 0.3);
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #241450;
+  cursor: pointer;
+}
+.shop-category.active {
+  background: #0f172a;
+  color: #fcd34d;
+  border-color: #fcd34d;
+}
+.shop-items {
+  min-height: 160px;
+  border-radius: 18px;
+  border: 1px dashed rgba(29, 15, 65, 0.2);
+  background: rgba(15, 23, 42, 0.1);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #4c1d95;
+}
+.shop-empty {
+  font-size: 1rem;
+  text-align: center;
+  max-width: 360px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .pause-panel {
   min-width: 320px;

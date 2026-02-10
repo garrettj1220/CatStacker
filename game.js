@@ -24,8 +24,14 @@ const victoryGallery = document.getElementById("victory-gallery");
 const victoryPlayAgain = document.getElementById("victory-play-again");
 const victoryMainMenu = document.getElementById("victory-main-menu");
 const topScoreValue = document.getElementById("top-score-value");
+const shopButton = document.getElementById("shop-button");
+const shopPanel = document.getElementById("shop-panel");
+const shopCloseButton = document.getElementById("shop-close");
+const shopPointsValue = document.getElementById("shop-points-value");
+const shopPanelPoints = document.getElementById("shop-panel-points");
 const BEST_SURVIVAL_KEY = "catstacker-best-survival";
 const BEST_CHECKPOINT_KEY = "catstacker-best-checkpoint";
+const SHOP_POINTS_KEY = "catstacker-shop-points";
 const slipperyWarning = document.getElementById("slippery-warning");
 const victoryModeLabel = document.getElementById("victory-mode");
 const gameOverTitle = document.getElementById("game-over-title");
@@ -303,8 +309,10 @@ const state = {
 
 let bestSurvivalScore = loadBestScore(BEST_SURVIVAL_KEY);
 let bestCheckpointScore = loadBestScore(BEST_CHECKPOINT_KEY);
+let shopPoints = loadShopPoints();
 state.topScore = loadPersonalBest();
 updateTopScoreDisplay();
+updateShopPointsDisplay();
 function loadBestScore(key) {
   try {
     const raw = window.localStorage.getItem(key);
@@ -323,6 +331,40 @@ function saveBestScore(key, value) {
   } catch (error) {
     // ignore
   }
+}
+function loadShopPoints() {
+  try {
+    const raw = window.localStorage.getItem(SHOP_POINTS_KEY);
+    const parsed = parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  } catch (error) {
+    // ignore
+  }
+  return 0;
+}
+function saveShopPoints() {
+  try {
+    window.localStorage.setItem(SHOP_POINTS_KEY, String(shopPoints));
+  } catch (error) {
+    // ignore
+  }
+}
+function updateShopPointsDisplay() {
+  if (shopPointsValue) {
+    shopPointsValue.textContent = shopPoints.toString();
+  }
+  if (shopPanelPoints) {
+    shopPanelPoints.textContent = shopPoints.toString();
+  }
+}
+function addShopPoints(amount) {
+  const points = Math.max(0, Math.floor(amount));
+  if (points <= 0) return;
+  shopPoints += points;
+  saveShopPoints();
+  updateShopPointsDisplay();
 }
 function updateMenuBestScores() {
   if (bestSurvivalScoreEl) {
@@ -354,7 +396,14 @@ function resolveMainMenu() {
   return mainMenu;
 }
 
+function hideShopPanelOnly() {
+  if (shopPanel) {
+    shopPanel.classList.add("hidden");
+  }
+}
+
 function showMainMenu() {
+  hideShopPanelOnly();
   const menu = resolveMainMenu();
   menu && menu.classList.remove("hidden");
   overlay && overlay.classList.add("hidden");
@@ -381,6 +430,22 @@ function startNewRun(mode) {
   hideMainMenu();
   state.paused = false;
   startGame();
+}
+function showShopPanel() {
+  hideMainMenu();
+  if (shopPanel) {
+    shopPanel.classList.remove("hidden");
+  }
+}
+function closeShopPanel() {
+  hideShopPanelOnly();
+  const menu = resolveMainMenu();
+  if (menu) {
+    menu.classList.remove("hidden");
+    updateMenuBestScores();
+    updateTopScoreDisplay();
+    updateShopPointsDisplay();
+  }
 }
 function restartCheckpointLevel() {
   overlay && overlay.classList.add("hidden");
@@ -926,6 +991,9 @@ function endRun() {
   finalScore.textContent = state.score;
   finalLevel.textContent = state.currentLevel + 1;
   recordModeBest(state.score);
+  if (state.gameMode === "survival") {
+    addShopPoints(state.score);
+  }
   showGameOverPanel();
   state.paused = false;
   overlay.classList.remove("hidden");
@@ -1474,6 +1542,9 @@ function checkVictory() {
 function showVictoryScreen() {
   overlay.classList.add("hidden");
   recordModeBest(state.score);
+  if (state.gameMode === "survival") {
+    addShopPoints(state.score);
+  }
   if (!victoryScreen) return;
   const modeLabel =
     state.gameMode === "checkpoint"
@@ -1615,6 +1686,21 @@ if (document.readyState === "loading") {
 } else {
   setupMainMenuModeHandlers();
 }
+shopButton &&
+  shopButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    showShopPanel();
+  });
+shopCloseButton &&
+  shopCloseButton.addEventListener("click", () => {
+    closeShopPanel();
+  });
+shopPanel &&
+  shopPanel.addEventListener("click", (event) => {
+    if (event.target === shopPanel) {
+      closeShopPanel();
+    }
+  });
 pauseResumeBtn &&
   pauseResumeBtn.addEventListener("click", () => {
     closePauseMenu();

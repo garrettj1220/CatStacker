@@ -39,6 +39,10 @@
             <p>Best Survival Score: <span id="best-survival-score">0</span></p>
             <p>Best Checkpoint Run Score: <span id="best-checkpoint-score">0</span></p>
           </div>
+          <div class="shop-bar">
+            <button id="shop-button" class="shop-btn" type="button">Visit Shop</button>
+            <p class="shop-points-label">Shop Points: <span id="shop-points-value">0</span></p>
+          </div>
           <p class="menu-credit">By GarrettJPG</p>
         </div>
       </div>
@@ -53,6 +57,25 @@
       </aside>
       <div class="record-track" aria-live="polite">
         <span class="record-line top-line">Top Score: <span id="top-score-value">0</span></span>
+      </div>
+      <div id="shop-panel" class="overlay hidden shop-overlay">
+        <div class="panel shop-panel-content">
+          <header class="shop-header">
+            <h1>Cosmetic Shop</h1>
+            <button id="shop-close" class="shop-close" type="button">Close</button>
+          </header>
+          <p class="shop-panel-points">
+            Points: <span id="shop-panel-points">0</span>
+          </p>
+          <div class="shop-categories" id="shop-categories">
+            <button class="shop-category active" data-category="platforms">Platforms</button>
+          </div>
+          <div class="shop-items">
+            <div class="shop-empty">
+              No new items in the shop right now—come back later for more platforms.
+            </div>
+          </div>
+        </div>
       </div>
       <div id="level-overlay" class="level-overlay hidden">
         <div class="level-text">Level <span id="overlay-level">1</span></div>
