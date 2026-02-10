@@ -4,13 +4,13 @@
 CatStacker is a short-form browser game where players assemble quirky cats into a vertical tower without tipping over. Each cat is a physics object with its own weight, personality, and sensory quirks, so the fun comes from learning how placements change the balance and how special abilities can rescue a wobbling stack.
 
 ## Experience pillars
-- **Tactile stacking:** Simple point-and-click or tap controls place the next cat; leaning into subtle physics gives each placement weight.
+- **Tactile stacking:** Simple keyboard controls place the next cat (press Space to drop); leaning into subtle physics gives each placement weight.
 - **Visual personality:** Each cat has a distinct silhouette and expression, with playful purrfect audio cues when stacks succeed.
 - **Snackable goals:** Quick runs (60–90 seconds) with leaderboard-style scoring that rewards height, combos, and stylistic flourishes.
 
 ## Game loop
 1. **Prep phase:** The camera frames the base platform. A preview shows the next few cats and their traits (heavy, stretchy, magnetic, etc.).
-2. **Placement phase:** Player drags/taps to drop the next cat onto the tower. Cats ripple the stack and may trigger temporary effects (slow motion, gust of wind, etc.).
+2. **Placement phase:** Player presses Space to drop the next cat onto the tower. Cats ripple the stack and may trigger temporary effects (slow motion, gust of wind, etc.).
 3. **Evaluation:** When a cat settles, the game scores stability, height gain, and combo streaks. A wobble meter warns a collapse is imminent.
 4. **Failure or celebrate:** If the tower tips, the run ends and the final height/score is tallied. Otherwise continue to the next cat until time, score, or cat limit triggers victory.
 

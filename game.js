@@ -12,6 +12,7 @@ const finalScore = document.getElementById("final-score");
 const pauseMenu = document.getElementById("pause-menu");
 const pauseResumeBtn = document.getElementById("pause-resume");
 const pauseMenuHome = document.getElementById("pause-menu-home");
+const pauseButton = document.getElementById("pause-button");
 const unlockList = document.getElementById("unlock-list");
 const unlockFill = document.getElementById("unlock-fill");
 const heartRow = document.getElementById("heart-row");
@@ -1892,27 +1893,16 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     attemptDrop();
   }
-  if (event.code === "Escape") {
-    if (state.paused) {
-      closePauseMenu();
-    } else {
-      openPauseMenu();
-    }
+  // Escape is reserved for fullscreen exit in browsers.
+  if (event.code === "KeyP") {
+    event.preventDefault();
+    if (state.paused) closePauseMenu();
+    else openPauseMenu();
   }
   if (event.key === "f") {
     toggleFullscreen();
   }
 });
-
-canvas.addEventListener("pointerdown", (event) => {
-  handleCanvasClick(event);
-});
-
-function handleCanvasClick(event) {
-  if (state.mode !== "running" || state.paused) return;
-  event.preventDefault();
-  attemptDrop();
-}
 
 function screenToWorldX(screenX) {
   const zoom = state.cameraZoom || 1;
@@ -1979,6 +1969,14 @@ shopPopup &&
 pauseResumeBtn &&
   pauseResumeBtn.addEventListener("click", () => {
     closePauseMenu();
+  });
+pauseButton &&
+  pauseButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    audioManager.unlockAudio();
+    audioManager.click();
+    if (state.paused) closePauseMenu();
+    else openPauseMenu();
   });
 pauseMenuHome &&
   pauseMenuHome.addEventListener("click", () => {
