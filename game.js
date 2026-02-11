@@ -45,6 +45,7 @@ const BEST_SURVIVAL_KEY = "catstacker-best-survival";
 const BEST_CHECKPOINT_KEY = "catstacker-best-checkpoint";
 const SHOP_POINTS_KEY = "catstacker-shop-points";
 const SHOP_PURCHASES_KEY = "catstacker-shop-purchases";
+const EQUIPPED_PLATFORM_KEY = "catstacker-equipped-platform";
 const AUDIO_MUTED_KEY = "catstacker-audio-muted";
 const slipperyWarning = document.getElementById("slippery-warning");
 const victoryModeLabel = document.getElementById("victory-mode");
@@ -101,6 +102,7 @@ const AUDIO_PATHS = {
   unlock: "Art/Audio/unlock.wav",
   lightning: "Art/Audio/lightning.wav"
 };
+const DEFAULT_PLATFORM_KEY = "default";
 const INITIAL_RECORD = 0;
 const CAT_WIDTH = 160;
 const CAT_HEIGHT = 80;
@@ -563,9 +565,11 @@ let bestSurvivalScore = loadBestScore(BEST_SURVIVAL_KEY);
 let bestCheckpointScore = loadBestScore(BEST_CHECKPOINT_KEY);
 let shopPoints = loadShopPoints();
 const purchasedPlatforms = loadPurchasedPlatforms();
+let equippedPlatformKey = loadEquippedPlatform();
 state.topScore = loadPersonalBest();
 updateTopScoreDisplay();
 updateShopPointsDisplay();
+updateMenuPlatformPreview();
 function loadBestScore(key) {
   try {
     const raw = window.localStorage.getItem(key);
@@ -604,6 +608,25 @@ function saveShopPoints() {
     // ignore
   }
 }
+
+function loadEquippedPlatform() {
+  try {
+    const raw = window.localStorage.getItem(EQUIPPED_PLATFORM_KEY);
+    if (!raw) return DEFAULT_PLATFORM_KEY;
+    return String(raw);
+  } catch (error) {
+    // ignore
+  }
+  return DEFAULT_PLATFORM_KEY;
+}
+
+function saveEquippedPlatform() {
+  try {
+    window.localStorage.setItem(EQUIPPED_PLATFORM_KEY, String(equippedPlatformKey));
+  } catch (error) {
+    // ignore
+  }
+}
 function updateShopPointsDisplay() {
   if (shopPointsValue) {
     shopPointsValue.textContent = shopPoints.toString();
@@ -611,6 +634,38 @@ function updateShopPointsDisplay() {
   if (shopPanelPoints) {
     shopPanelPoints.textContent = shopPoints.toString();
   }
+}
+
+function canEquipPlatform(key) {
+  if (!key || key === DEFAULT_PLATFORM_KEY) return true;
+  return purchasedPlatforms.has(key);
+}
+
+function getEquippedPlatformItem() {
+  if (!equippedPlatformKey || equippedPlatformKey === DEFAULT_PLATFORM_KEY) return null;
+  return SHOP_ITEMS.find((item) => item.key === equippedPlatformKey) || null;
+}
+
+function updateMenuPlatformPreview() {
+  const el = document.getElementById("menu-platform-preview");
+  if (!el) return;
+  const item = getEquippedPlatformItem();
+  if (item?.img) {
+    el.style.backgroundImage = `url("${item.img}")`;
+    el.style.backgroundColor = "rgba(255,255,255,0.08)";
+  } else {
+    el.style.backgroundImage = "";
+    el.style.background =
+      "linear-gradient(180deg, rgba(255, 205, 145, 0.95), rgba(232, 125, 84, 0.95))";
+  }
+}
+
+function equipPlatform(key) {
+  const desired = key || DEFAULT_PLATFORM_KEY;
+  if (!canEquipPlatform(desired)) return;
+  equippedPlatformKey = desired;
+  saveEquippedPlatform();
+  updateMenuPlatformPreview();
 }
 function loadPurchasedPlatforms() {
   try {
@@ -759,6 +814,10 @@ function openShopPopup(item) {
   shopPopup.classList.remove("hidden");
   audioManager.unlockAudio();
   audioManager.unlock();
+
+  // Convenience: newly purchased platforms become the equipped platform immediately.
+  equipPlatform(item.key);
+  renderShopGrid();
 }
 
 function renderShopGrid() {
@@ -796,10 +855,19 @@ function renderShopGrid() {
     button.dataset.shopItem = item.key;
 
     const isPurchased = purchasedPlatforms.has(item.key);
+    const isEquipped = equippedPlatformKey === item.key;
     if (isPurchased) {
       card.classList.add("is-purchased");
+      if (isEquipped) {
+        card.classList.add("is-equipped");
+        check.textContent = "Equipped";
+      }
       button.disabled = true;
       button.textContent = "Purchased";
+      card.addEventListener("dblclick", () => {
+        equipPlatform(item.key);
+        renderShopGrid();
+      });
     } else {
       const canAfford = shopPoints >= item.cost;
       button.disabled = !canAfford;
@@ -980,6 +1048,7 @@ function maybeUpdateTopScore() {
 
 const assetCache = new Map();
 const catDefs = new Map();
+const platformDefs = new Map();
 let assetsLoaded = false;
 let lastTimestamp = 0;
 
@@ -1000,6 +1069,22 @@ async function loadAssets() {
       };
     })
   );
+  SHOP_ITEMS.forEach((item) => {
+    promises.push(
+      new Promise((resolve) => {
+        const img = new Image();
+        img.src = item.img;
+        img.onload = () => {
+          platformDefs.set(item.key, img);
+          resolve();
+        };
+        img.onerror = () => {
+          console.warn(`Failed to load platform ${item.key}`);
+          resolve();
+        };
+      })
+    );
+  });
   await Promise.all(promises);
   assetsLoaded = true;
   renderUnlockList();
@@ -1998,25 +2083,55 @@ function drawPlatform() {
   const bounds = getPlatformBounds();
   const x = bounds.left;
   const y = BASE_Y + 4;
+  const equipped = equippedPlatformKey;
+  const platformImg =
+    equipped && equipped !== DEFAULT_PLATFORM_KEY ? platformDefs.get(equipped) : null;
+  const renderHeight = platformImg ? 54 : platform.height;
   ctx.save();
+  // Base shadow.
   ctx.fillStyle = "#2b1d3d";
-  roundedRect(x - 10, y + 12, platform.width + 20, platform.height + 10, 14);
+  roundedRect(x - 10, y + 12, platform.width + 20, renderHeight + 10, 14);
   ctx.fill();
-  const wood = ctx.createLinearGradient(0, y, 0, y + platform.height);
-  wood.addColorStop(0, "#ffcc8e");
-  wood.addColorStop(0.6, "#f7a963");
-  wood.addColorStop(1, "#e07b54");
-  ctx.fillStyle = wood;
-  roundedRect(x, y, platform.width, platform.height, 14);
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  roundedRect(x + 16, y + 8, platform.width - 32, platform.height - 18, 10);
-  ctx.fill();
-  ctx.fillStyle = "#1b1424";
-  ctx.globalAlpha = 0.15;
-  ctx.fillRect(x + 20, y + 6, platform.width - 40, 2);
-  ctx.fillRect(x + 20, y + 14, platform.width - 40, 2);
-  ctx.globalAlpha = 1;
+
+  if (platformImg) {
+    // Clip so platform skins don't spill outside the rounded shape.
+    ctx.save();
+    roundedRect(x, y, platform.width, renderHeight, 14);
+    ctx.clip();
+
+    const imgW = platformImg.width || 1;
+    const imgH = platformImg.height || 1;
+    const targetW = platform.width;
+    const targetH = renderHeight;
+    const scale = Math.max(targetW / imgW, targetH / imgH);
+    const drawW = imgW * scale;
+    const drawH = imgH * scale;
+    const drawX = x + (targetW - drawW) / 2;
+    const drawY = y + (targetH - drawH) / 2;
+    ctx.drawImage(platformImg, drawX, drawY, drawW, drawH);
+    ctx.restore();
+
+    // Subtle sheen.
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    roundedRect(x + 12, y + 8, platform.width - 24, Math.max(10, renderHeight - 24), 10);
+    ctx.fill();
+  } else {
+    const wood = ctx.createLinearGradient(0, y, 0, y + platform.height);
+    wood.addColorStop(0, "#ffcc8e");
+    wood.addColorStop(0.6, "#f7a963");
+    wood.addColorStop(1, "#e07b54");
+    ctx.fillStyle = wood;
+    roundedRect(x, y, platform.width, platform.height, 14);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    roundedRect(x + 16, y + 8, platform.width - 32, platform.height - 18, 10);
+    ctx.fill();
+    ctx.fillStyle = "#1b1424";
+    ctx.globalAlpha = 0.15;
+    ctx.fillRect(x + 20, y + 6, platform.width - 40, 2);
+    ctx.fillRect(x + 20, y + 14, platform.width - 40, 2);
+    ctx.globalAlpha = 1;
+  }
   ctx.restore();
 }
 
