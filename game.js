@@ -114,6 +114,7 @@ const DEFAULT_PLATFORM_KEY = "default";
 const INITIAL_RECORD = 0;
 const CAT_WIDTH = 160;
 const CAT_HEIGHT = 80;
+const MAX_HEARTS = 5;
 const BASE_Y = canvas.height - 70;
 const WOBBLE_THRESHOLD = 160;
 const GRAVITY_BASE = 0.75;
@@ -510,7 +511,7 @@ const state = {
   unlockedCats: [CAT_NAMES[0]],
   lastUnlockedIndex: 0,
   ladderAnimating: false,
-  hearts: 5,
+  hearts: MAX_HEARTS,
   centerOfGravity: canvas.width / 2,
   balanceOffset: 0,
   offsetSum: 0,
@@ -573,6 +574,7 @@ const state = {
   bonusPoints: 0,
   cleanStreak: 0,
   perfectChain: 0,
+  stableWobbleStreak: 0,
   pointsAwardedThisRun: false
 };
 
@@ -964,6 +966,7 @@ function showMainMenu() {
   state.bonusPoints = 0;
   state.cleanStreak = 0;
   state.perfectChain = 0;
+  state.stableWobbleStreak = 0;
   state.pointsAwardedThisRun = false;
   updateMenuBestScores();
   updateTopScoreDisplay();
@@ -984,6 +987,7 @@ function startNewRun(mode) {
   state.bonusPoints = 0;
   state.cleanStreak = 0;
   state.perfectChain = 0;
+  state.stableWobbleStreak = 0;
   state.pointsAwardedThisRun = false;
   updateTopScoreDisplay();
   hideMainMenu();
@@ -1021,6 +1025,7 @@ function restartCheckpointLevel() {
   state.bonusPoints = state.levelStartBonusPoints;
   state.cleanStreak = 0;
   state.perfectChain = 0;
+  state.stableWobbleStreak = 0;
   state.pointsAwardedThisRun = false;
   beginLevel(state.currentLevel, true);
 }
@@ -1218,7 +1223,7 @@ function beginLevel(levelIndex, skipOverlay = false) {
   state.cameraTargetZoom = 1;
   state.cameraYOffset = 0;
   state.cameraTargetYOffset = 0;
-  state.hearts = 5;
+  state.hearts = MAX_HEARTS;
   renderHearts();
   const unlockIndex = clamp(safeIndex, 0, CAT_NAMES.length - 1);
   const levelCatName =
@@ -1257,6 +1262,9 @@ function beginLevel(levelIndex, skipOverlay = false) {
   state.fastPreviewRemaining = 0;
   state.fastPreviewCooldown = 0;
   state.previewSpeedMultiplier = 1;
+  state.cleanStreak = 0;
+  state.perfectChain = 0;
+  state.stableWobbleStreak = 0;
   if (!levelEffect.rain) {
     state.rainDrops = [];
   }
@@ -1521,6 +1529,29 @@ function finalizeCat(cat) {
       return;
     }
   }
+  // Every successful placement regenerates 1 life (up to max).
+  if (state.hearts < MAX_HEARTS) {
+    state.hearts = Math.min(MAX_HEARTS, state.hearts + 1);
+    renderHearts();
+  }
+
+  // Staying above 75% wobble meter for 10 placements grants an extra life.
+  const wobbleRemaining = Math.max(0, 1 - state.wobble / WOBBLE_THRESHOLD);
+  if (wobbleRemaining >= 0.75) {
+    state.stableWobbleStreak += 1;
+    if (state.stableWobbleStreak >= 10) {
+      const hadRoom = state.hearts < MAX_HEARTS;
+      state.hearts = Math.min(MAX_HEARTS, state.hearts + 1);
+      renderHearts();
+      state.stableWobbleStreak = 0;
+      if (hadRoom) {
+        triggerBonusBurst("+1 Life");
+      }
+    }
+  } else {
+    state.stableWobbleStreak = 0;
+  }
+
   state.activeCat = null;
   state.sessionScore += pointsPerCat();
   awardRunPoints(pointsPerCat());
@@ -2499,7 +2530,7 @@ function triggerLadderAdvance() {
 function renderHearts() {
   if (!heartRow) return;
   heartRow.innerHTML = "";
-  for (let i = 0; i < 5; i += 1) {
+  for (let i = 0; i < MAX_HEARTS; i += 1) {
     const heart = document.createElement("span");
     heart.className = "heart-icon";
     const fill = i < state.hearts ? "#ef4444" : "#9ca3af";
@@ -2711,6 +2742,7 @@ function bounceMissedCat(cat) {
   cat.vx = direction * 6.2;
   state.cleanStreak = 0;
   state.perfectChain = 0;
+  state.stableWobbleStreak = 0;
   state.hearts = Math.max(0, state.hearts - 1);
   renderHearts();
   if (state.hearts <= 0) {
