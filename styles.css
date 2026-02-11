@@ -613,6 +613,15 @@ canvas {
   background-position: center;
   background-repeat: no-repeat;
 }
+.menu-platform-label {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #392a5f;
+  font-weight: 700;
+}
 
 @media (max-width: 980px) {
   .main-menu-content {

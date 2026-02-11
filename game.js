@@ -96,6 +96,7 @@ const SHOP_ITEMS = [
   { key: "terracotta", title: "Terracotta Platform", cost: 250, img: "Art/Platforms/terracottaplatform.png" },
   { key: "tea", title: "Tea Platform", cost: 1000, img: "Art/Platforms/teaplatform.png" },
   { key: "coffee", title: "Coffee Platform", cost: 2000, img: "Art/Platforms/coffeeplatform.png" },
+  { key: "blondegirl", title: "Blonde Girl Platform", cost: 2500, img: "Art/Platforms/blondegirlplatform.png" },
   { key: "castle", title: "Castle Platform", cost: 2000, img: "Art/Platforms/castleplatform.png" },
   { key: "chicken", title: "Chicken Platform", cost: 3000, img: "Art/Platforms/chickenplatform.png" },
   { key: "human", title: "Human Platform", cost: 3000, img: "Art/Platforms/humanplatform.png" }
@@ -163,7 +164,7 @@ const LEVELS = [
     name: "Loaf Dawn",
     gradient: ["#fff1f3", "#fde6f1"],
     previewSpeed: 8.4,
-    previewDirectionChangeChance: 0.003,
+    previewDirectionChangeChance: 0,
     previewDirectionCooldown: 0,
     dropDrift: 0,
     previewJitter: 0.02,
@@ -173,8 +174,8 @@ const LEVELS = [
     name: "Dusky Bloom",
     gradient: ["#fff5e1", "#ffd6b3"],
     previewSpeed: 9.7,
-    previewDirectionChangeChance: 0.012,
-    previewDirectionCooldown: 140,
+    previewDirectionChangeChance: 0.006,
+    previewDirectionCooldown: 150,
     dropDrift: 0.26,
     previewJitter: 0.05,
     dropRandomness: { amplitude: 0.18, interval: 68, variance: 36, inertia: 0.24 }
@@ -183,8 +184,8 @@ const LEVELS = [
     name: "Nightfall Rain",
     gradient: ["#030513", "#0f122f"],
     previewSpeed: 10.3,
-    previewDirectionChangeChance: 0.024,
-    previewDirectionCooldown: 110,
+    previewDirectionChangeChance: 0.02,
+    previewDirectionCooldown: 120,
     dropDrift: 0.42,
     previewJitter: 0.08,
     dropRandomness: { amplitude: 0.33, interval: 62, variance: 32, inertia: 0.28 }
@@ -203,8 +204,8 @@ const LEVELS = [
     name: "Shadow Drizzle",
     gradient: ["#030415", "#17143a"],
     previewSpeed: 10.3,
-    previewDirectionChangeChance: 0.058,
-    previewDirectionCooldown: 68,
+    previewDirectionChangeChance: 0.038,
+    previewDirectionCooldown: 90,
     dropDrift: 0.78,
     previewJitter: 0.16,
     dropRandomness: { amplitude: 0.64, interval: 48, variance: 24, inertia: 0.36 }
@@ -213,8 +214,8 @@ const LEVELS = [
     name: "Sunset Haze",
     gradient: ["#ffbb77", "#ff6c40"],
     previewSpeed: 10.3,
-    previewDirectionChangeChance: 0.066,
-    previewDirectionCooldown: 54,
+    previewDirectionChangeChance: 0.038,
+    previewDirectionCooldown: 90,
     dropDrift: 0.92,
     previewJitter: 0.2,
     dropRandomness: { amplitude: 0.78, interval: 44, variance: 20, inertia: 0.38 }
@@ -223,8 +224,8 @@ const LEVELS = [
     name: "Electric Tangle",
     gradient: ["#050215", "#1c1b3a"],
     previewSpeed: 10.3,
-    previewDirectionChangeChance: 0.078,
-    previewDirectionCooldown: 48,
+    previewDirectionChangeChance: 0.038,
+    previewDirectionCooldown: 90,
     dropDrift: 1.08,
     previewJitter: 0.24,
     dropRandomness: { amplitude: 0.95, interval: 40, variance: 18, inertia: 0.4 }
@@ -233,8 +234,8 @@ const LEVELS = [
     name: "Eclipse Apex",
     gradient: ["#04020f", "#1a1236"],
     previewSpeed: 10.3,
-    previewDirectionChangeChance: 0.09,
-    previewDirectionCooldown: 40,
+    previewDirectionChangeChance: 0.038,
+    previewDirectionCooldown: 90,
     dropDrift: 1.22,
     previewJitter: 0.28,
     dropRandomness: { amplitude: 1.1, interval: 36, variance: 16, inertia: 0.42 }
@@ -243,8 +244,8 @@ const LEVELS = [
     name: "Clearwind Day",
     gradient: ["#c8f1ff", "#fff3c8"],
     previewSpeed: 10.5,
-    previewDirectionChangeChance: 0.08,
-    previewDirectionCooldown: 44,
+    previewDirectionChangeChance: 0.038,
+    previewDirectionCooldown: 90,
     dropDrift: 0.7,
     previewJitter: 0.06,
     dropRandomness: { amplitude: 0.4, interval: 44, variance: 22, inertia: 0.34 }
@@ -253,8 +254,8 @@ const LEVELS = [
     name: "Swaying Fields",
     gradient: ["#b8ffd6", "#ffe9b3"],
     previewSpeed: 10.7,
-    previewDirectionChangeChance: 0.095,
-    previewDirectionCooldown: 40,
+    previewDirectionChangeChance: 0.038,
+    previewDirectionCooldown: 90,
     dropDrift: 0.82,
     previewJitter: 0.08,
     dropRandomness: { amplitude: 0.5, interval: 42, variance: 20, inertia: 0.34 }
@@ -263,8 +264,8 @@ const LEVELS = [
     name: "Haze Sprint",
     gradient: ["#b6d7ff", "#f6d0ff"],
     previewSpeed: 10.9,
-    previewDirectionChangeChance: 0.11,
-    previewDirectionCooldown: 36,
+    previewDirectionChangeChance: 0.038,
+    previewDirectionCooldown: 90,
     dropDrift: 0.95,
     previewJitter: 0.12,
     dropRandomness: { amplitude: 0.62, interval: 40, variance: 18, inertia: 0.36 }
@@ -273,8 +274,8 @@ const LEVELS = [
     name: "Stormwork",
     gradient: ["#101032", "#2b1a4a"],
     previewSpeed: 11.1,
-    previewDirectionChangeChance: 0.12,
-    previewDirectionCooldown: 34,
+    previewDirectionChangeChance: 0.038,
+    previewDirectionCooldown: 90,
     dropDrift: 1.1,
     previewJitter: 0.14,
     dropRandomness: { amplitude: 0.8, interval: 38, variance: 16, inertia: 0.38 }
@@ -283,8 +284,8 @@ const LEVELS = [
     name: "Countdown Crown",
     gradient: ["#ffe6d0", "#ffd0e6"],
     previewSpeed: 11.0,
-    previewDirectionChangeChance: 0.1,
-    previewDirectionCooldown: 38,
+    previewDirectionChangeChance: 0.038,
+    previewDirectionCooldown: 90,
     dropDrift: 0.9,
     previewJitter: 0.1,
     dropRandomness: { amplitude: 0.6, interval: 40, variance: 18, inertia: 0.36 }
@@ -406,13 +407,12 @@ function getEndlessLevelConfig(levelIndex) {
   // Gentle escalation; keep within the feel of late-game.
   const t = Math.max(0, levelIndex - (LEVELS.length - 1));
   const speed = 11.0 + Math.min(1.4, t * 0.06);
-  const previewChance = 0.1 + Math.min(0.06, t * 0.002);
   const config = {
     name: `Survival ${levelIndex + 1}`,
     gradient: pickEndlessGradient(levelIndex),
     previewSpeed: speed,
-    previewDirectionChangeChance: previewChance,
-    previewDirectionCooldown: Math.max(24, 40 - Math.floor(t * 0.5)),
+    previewDirectionChangeChance: 0.038,
+    previewDirectionCooldown: 90,
     dropDrift: 0.9 + Math.min(0.8, t * 0.03),
     previewJitter: 0.14,
     dropRandomness: { amplitude: 0.9, interval: 36, variance: 16, inertia: 0.4 }
@@ -665,15 +665,18 @@ function getEquippedPlatformItem() {
 
 function updateMenuPlatformPreview() {
   const el = document.getElementById("menu-platform-preview");
+  const labelEl = document.getElementById("menu-platform-label");
   if (!el) return;
   const item = getEquippedPlatformItem();
   if (item?.img) {
     el.style.backgroundImage = `url("${item.img}")`;
     el.style.backgroundColor = "rgba(255,255,255,0.08)";
+    if (labelEl) labelEl.textContent = item.title;
   } else {
     el.style.backgroundImage = "";
     el.style.background =
       "linear-gradient(180deg, rgba(255, 205, 145, 0.95), rgba(232, 125, 84, 0.95))";
+    if (labelEl) labelEl.textContent = "Default Platform";
   }
 }
 
@@ -1510,15 +1513,17 @@ function finalizeCat(cat) {
     const perfectThreshold = placed.width * 0.07;
     if (absOffset <= cleanThreshold) {
       state.cleanStreak += 1;
-      if (state.cleanStreak > 0 && state.cleanStreak % 3 === 0) {
-        awardBonusPoints(18 + getLevelNumber() * 2, "Streak");
+      if (state.cleanStreak > 0 && state.cleanStreak % 5 === 0) {
+        awardBonusPoints(3, "Streak");
       }
     } else {
       state.cleanStreak = 0;
     }
     if (absOffset <= perfectThreshold) {
       state.perfectChain += 1;
-      awardBonusPoints(10 + getLevelNumber(), "Perfect");
+      if (state.perfectChain % 2 === 0) {
+        awardBonusPoints(1, "Perfect");
+      }
       // Subtle wobble relief reward for a very clean drop.
       state.wobble = Math.max(0, state.wobble - 8);
     } else {
