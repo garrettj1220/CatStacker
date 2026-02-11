@@ -9,6 +9,9 @@ const heightValue = document.getElementById("height-value");
 const wobbleBar = document.getElementById("wobble-bar");
 const finalHeight = document.getElementById("final-height");
 const finalScore = document.getElementById("final-score");
+const finalRunPoints = document.getElementById("final-run-points");
+const finalBonusPoints = document.getElementById("final-bonus-points");
+const finalTotalPoints = document.getElementById("final-total-points");
 const pauseMenu = document.getElementById("pause-menu");
 const pauseResumeBtn = document.getElementById("pause-resume");
 const pauseMenuHome = document.getElementById("pause-menu-home");
@@ -24,6 +27,9 @@ const victoryScreen = document.getElementById("victory-screen");
 const victoryGallery = document.getElementById("victory-gallery");
 const victoryPlayAgain = document.getElementById("victory-play-again");
 const victoryMainMenu = document.getElementById("victory-main-menu");
+const victoryRunPoints = document.getElementById("victory-run-points");
+const victoryBonusPoints = document.getElementById("victory-bonus-points");
+const victoryTotalPoints = document.getElementById("victory-total-points");
 const topScoreValue = document.getElementById("top-score-value");
 const shopButton = document.getElementById("shop-button");
 const shopPanel = document.getElementById("shop-panel");
@@ -53,6 +59,7 @@ const gameOverTitle = document.getElementById("game-over-title");
 const gameOverText = document.getElementById("game-over-text");
 const gameOverPlayAgain = document.getElementById("game-over-play-again");
 const gameOverMainMenu = document.getElementById("game-over-main-menu");
+const bonusBurst = document.getElementById("bonus-burst");
 const PERSONAL_BEST_KEY = "catstacker-personal-best";
 
 const CAT_NAMES = [
@@ -86,12 +93,12 @@ const CAT_COLORS = [
   "#ff6f91"
 ];
 const SHOP_ITEMS = [
-  { key: "terracotta", title: "Terracotta Platform", cost: 500, img: "Art/Platforms/terracottaplatform.png" },
-  { key: "tea", title: "Tea Platform", cost: 1500, img: "Art/Platforms/teaplatform.png" },
-  { key: "coffee", title: "Coffee Platform", cost: 2500, img: "Art/Platforms/coffeeplatform.png" },
-  { key: "castle", title: "Castle Platform", cost: 3000, img: "Art/Platforms/castleplatform.png" },
-  { key: "chicken", title: "Chicken Platform", cost: 5000, img: "Art/Platforms/chickenplatform.png" },
-  { key: "human", title: "Human Platform", cost: 5000, img: "Art/Platforms/humanplatform.png" }
+  { key: "terracotta", title: "Terracotta Platform", cost: 250, img: "Art/Platforms/terracottaplatform.png" },
+  { key: "tea", title: "Tea Platform", cost: 1000, img: "Art/Platforms/teaplatform.png" },
+  { key: "coffee", title: "Coffee Platform", cost: 2000, img: "Art/Platforms/coffeeplatform.png" },
+  { key: "castle", title: "Castle Platform", cost: 2000, img: "Art/Platforms/castleplatform.png" },
+  { key: "chicken", title: "Chicken Platform", cost: 3000, img: "Art/Platforms/chickenplatform.png" },
+  { key: "human", title: "Human Platform", cost: 3000, img: "Art/Platforms/humanplatform.png" }
 ];
 const AUDIO_ICON_ON = "Art/Icons/volume-on.svg";
 const AUDIO_ICON_OFF = "Art/Icons/volume-off.svg";
@@ -528,6 +535,8 @@ const state = {
   gameMode: "survival",
   paused: false,
   levelStartScore: 0,
+  levelStartRunPoints: 0,
+  levelStartBonusPoints: 0,
   missOffsetRatio: DEFAULT_MISS_OFFSET_RATIO,
   lightningTimer: 0,
   nextLightning: Infinity,
@@ -559,7 +568,12 @@ const state = {
   swayVelocity: 0,
   swayBase: 0,
   dropTimerActive: false,
-  dropTimerRemaining: 0
+  dropTimerRemaining: 0,
+  runPoints: 0,
+  bonusPoints: 0,
+  cleanStreak: 0,
+  perfectChain: 0,
+  pointsAwardedThisRun: false
 };
 
 let bestSurvivalScore = loadBestScore(BEST_SURVIVAL_KEY);
@@ -717,71 +731,27 @@ function updateAudioToggleUI() {
 
 const audioManager = (() => {
   let unlocked = false;
-
-  const ambience = new Audio(AUDIO_PATHS.ambience);
-  ambience.loop = true;
-  ambience.volume = 0.18;
-
-  const rain = new Audio(AUDIO_PATHS.rain);
-  rain.loop = true;
-  rain.volume = 0.0;
-
-  function playLoop(track) {
-    if (!unlocked || audioMuted) return;
-    if (!track.paused) return;
-    track.play().catch(() => {});
-  }
-
-  function stopLoop(track) {
-    track.pause();
-    track.currentTime = 0;
-  }
+  const SFX_MASTER_VOLUME = 0.25;
 
   function playOneShot(path, volume) {
     if (!unlocked || audioMuted) return;
     const clip = new Audio(path);
-    clip.volume = volume;
+    clip.volume = volume * SFX_MASTER_VOLUME;
     clip.play().catch(() => {});
-  }
-
-  function setRainActive(active) {
-    if (!unlocked || audioMuted) {
-      rain.volume = 0.0;
-      stopLoop(rain);
-      return;
-    }
-    if (active) {
-      rain.volume = 0.22;
-      playLoop(rain);
-    } else {
-      rain.volume = 0.0;
-      stopLoop(rain);
-    }
   }
 
   function unlockAudio() {
     if (unlocked) return;
     unlocked = true;
-    playLoop(ambience);
   }
 
   function setMuted(muted) {
     audioMuted = muted;
     saveAudioMuted();
     updateAudioToggleUI();
-    if (audioMuted) {
-      stopLoop(ambience);
-      stopLoop(rain);
-      return;
-    }
-    if (unlocked) {
-      playLoop(ambience);
-    }
   }
 
-  function onLevelChange(effect) {
-    setRainActive(!!effect?.rain);
-  }
+  function onLevelChange() {}
 
   return {
     unlockAudio,
@@ -898,14 +868,46 @@ function pointsPerCat() {
   // Level 1 => 1 point per cat, Level 2 => 2, etc.
   return Math.max(1, getLevelNumber());
 }
+
+function getModePointFactor() {
+  // Checkpoint awards half as many accumulated points as Survival.
+  return state.gameMode === "checkpoint" ? 0.5 : 1;
+}
+
+function awardRunPoints(basePoints) {
+  const scaled = Math.max(0, Math.round(basePoints * getModePointFactor()));
+  if (scaled <= 0) return 0;
+  state.runPoints += scaled;
+  return scaled;
+}
+
+function awardBonusPoints(basePoints, label = "Bonus") {
+  const scaled = Math.max(0, Math.round(basePoints * getModePointFactor()));
+  if (scaled <= 0) return 0;
+  state.bonusPoints += scaled;
+  triggerBonusBurst(`+${scaled} ${label}`);
+  return scaled;
+}
+
 function addShopPoints(amount) {
-  // Defensive check: only Survival mode contributes to shop points.
-  if (state.gameMode !== "survival") return;
   const points = Math.max(0, Math.floor(amount));
   if (points <= 0) return;
   shopPoints += points;
   saveShopPoints();
   updateShopPointsDisplay();
+}
+
+function triggerBonusBurst(text) {
+  if (!bonusBurst) return;
+  bonusBurst.textContent = text;
+  bonusBurst.classList.remove("hidden", "animate");
+  // Restart animation each trigger.
+  void bonusBurst.offsetWidth;
+  bonusBurst.classList.add("animate");
+  setTimeout(() => {
+    bonusBurst.classList.add("hidden");
+  }, 740);
+  audioManager.unlock();
 }
 function updateMenuBestScores() {
   if (bestSurvivalScoreEl) {
@@ -956,6 +958,13 @@ function showMainMenu() {
   state.sessionScore = 0;
   state.score = 0;
   state.levelStartScore = 0;
+  state.levelStartRunPoints = 0;
+  state.levelStartBonusPoints = 0;
+  state.runPoints = 0;
+  state.bonusPoints = 0;
+  state.cleanStreak = 0;
+  state.perfectChain = 0;
+  state.pointsAwardedThisRun = false;
   updateMenuBestScores();
   updateTopScoreDisplay();
   audioManager.onLevelChange(null);
@@ -969,6 +978,13 @@ function startNewRun(mode) {
   state.sessionScore = 0;
   state.score = 0;
   state.levelStartScore = 0;
+  state.levelStartRunPoints = 0;
+  state.levelStartBonusPoints = 0;
+  state.runPoints = 0;
+  state.bonusPoints = 0;
+  state.cleanStreak = 0;
+  state.perfectChain = 0;
+  state.pointsAwardedThisRun = false;
   updateTopScoreDisplay();
   hideMainMenu();
   state.paused = false;
@@ -1001,6 +1017,11 @@ function restartCheckpointLevel() {
   overlay && overlay.classList.add("hidden");
   state.sessionScore = state.levelStartScore;
   state.score = state.levelStartScore;
+  state.runPoints = state.levelStartRunPoints;
+  state.bonusPoints = state.levelStartBonusPoints;
+  state.cleanStreak = 0;
+  state.perfectChain = 0;
+  state.pointsAwardedThisRun = false;
   beginLevel(state.currentLevel, true);
 }
 function openPauseMenu() {
@@ -1178,6 +1199,8 @@ function beginLevel(levelIndex, skipOverlay = false) {
       : desiredIndex;
   state.currentLevel = safeIndex;
   state.levelStartScore = state.sessionScore;
+  state.levelStartRunPoints = state.runPoints;
+  state.levelStartBonusPoints = state.bonusPoints;
   state.levelThreshold = 10 + safeIndex * 5;
   const levelConfig = getLevelConfig(safeIndex);
   const levelNumber = safeIndex + 1;
@@ -1474,6 +1497,25 @@ function finalizeCat(cat) {
   if (previous) {
     const absOffset = Math.abs(center - (previous.x + previous.width / 2));
     state.wobble = Math.min(WOBBLE_THRESHOLD * 1.2, state.wobble + absOffset * 0.8);
+    // Bonus hooks: streaks and precise placements affect points only, not score.
+    const cleanThreshold = placed.width * 0.22;
+    const perfectThreshold = placed.width * 0.07;
+    if (absOffset <= cleanThreshold) {
+      state.cleanStreak += 1;
+      if (state.cleanStreak > 0 && state.cleanStreak % 3 === 0) {
+        awardBonusPoints(18 + getLevelNumber() * 2, "Streak");
+      }
+    } else {
+      state.cleanStreak = 0;
+    }
+    if (absOffset <= perfectThreshold) {
+      state.perfectChain += 1;
+      awardBonusPoints(10 + getLevelNumber(), "Perfect");
+      // Subtle wobble relief reward for a very clean drop.
+      state.wobble = Math.max(0, state.wobble - 8);
+    } else {
+      state.perfectChain = 0;
+    }
     if (absOffset > placed.width * 0.45) {
       triggerCollapse();
       return;
@@ -1481,6 +1523,7 @@ function finalizeCat(cat) {
   }
   state.activeCat = null;
   state.sessionScore += pointsPerCat();
+  awardRunPoints(pointsPerCat());
   audioManager.drop();
   recalcStats();
   checkCollapse();
@@ -1598,11 +1641,10 @@ function endRun() {
   finalScore.textContent = state.score;
   finalLevel.textContent = state.currentLevel + 1;
   recordModeBest(state.score);
-  // Shop points are earned only in Survival.
-  if (state.gameMode === "survival") addShopPoints(state.score);
   showGameOverPanel();
   state.paused = false;
   overlay.classList.remove("hidden");
+  runPointsPayoutAnimation("gameover");
 }
 
 function clamp(value, min, max) {
@@ -2355,8 +2397,6 @@ function checkVictory() {
 function showVictoryScreen() {
   overlay.classList.add("hidden");
   recordModeBest(state.score);
-  // Shop points are earned only in Survival.
-  if (state.gameMode === "survival") addShopPoints(state.score);
   if (!victoryScreen) return;
   const modeLabel =
     state.gameMode === "checkpoint"
@@ -2382,6 +2422,7 @@ function showVictoryScreen() {
     });
   }
   victoryScreen.classList.remove("hidden");
+  runPointsPayoutAnimation("victory");
 }
 
 function showGameOverPanel() {
@@ -2392,6 +2433,55 @@ function showGameOverPanel() {
   if (gameOverText) {
     gameOverText.textContent = `Your score: ${state.score}`;
   }
+}
+
+function runPointsPayoutAnimation(screenType) {
+  const runPoints = Math.max(0, Math.floor(state.runPoints || 0));
+  const bonusPoints = Math.max(0, Math.floor(state.bonusPoints || 0));
+  const totalAdd = runPoints + bonusPoints;
+
+  const runEl = screenType === "victory" ? victoryRunPoints : finalRunPoints;
+  const bonusEl = screenType === "victory" ? victoryBonusPoints : finalBonusPoints;
+  const totalEl = screenType === "victory" ? victoryTotalPoints : finalTotalPoints;
+
+  if (runEl) runEl.textContent = String(runPoints);
+  if (bonusEl) bonusEl.textContent = String(bonusPoints);
+  if (totalEl) totalEl.textContent = "0";
+
+  if (state.pointsAwardedThisRun) {
+    if (totalEl) totalEl.textContent = String(totalAdd);
+    return;
+  }
+
+  if (bonusPoints > 0) {
+    triggerBonusBurst(`+${bonusPoints} Bonus`);
+  }
+
+  const startPoints = shopPoints;
+  const durationMs = 1100;
+  const startTime = performance.now();
+
+  const tick = (now) => {
+    const t = Math.min(1, (now - startTime) / durationMs);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const addedNow = Math.floor(totalAdd * eased);
+
+    if (totalEl) totalEl.textContent = String(addedNow);
+    shopPoints = startPoints + addedNow;
+    updateShopPointsDisplay();
+
+    if (t < 1) {
+      requestAnimationFrame(tick);
+      return;
+    }
+
+    shopPoints = startPoints + totalAdd;
+    saveShopPoints();
+    updateShopPointsDisplay();
+    state.pointsAwardedThisRun = true;
+  };
+
+  requestAnimationFrame(tick);
 }
 
 function triggerLadderAdvance() {
@@ -2451,6 +2541,15 @@ function screenToWorldY(screenY) {
 document.addEventListener("keydown", (event) => {
   if (event.code === "Space") {
     event.preventDefault();
+    if (state.mode === "gameover") {
+      if (state.gameMode === "checkpoint") restartCheckpointLevel();
+      else startNewRun("survival");
+      return;
+    }
+    if (state.mode === "victory") {
+      startNewRun(state.gameMode);
+      return;
+    }
     attemptDrop();
   }
   // Escape is reserved for fullscreen exit in browsers.
@@ -2610,6 +2709,8 @@ function bounceMissedCat(cat) {
   cat.vy = -4.6;
   const direction = cat.x + cat.width / 2 < canvas.width / 2 ? -1 : 1;
   cat.vx = direction * 6.2;
+  state.cleanStreak = 0;
+  state.perfectChain = 0;
   state.hearts = Math.max(0, state.hearts - 1);
   renderHearts();
   if (state.hearts <= 0) {

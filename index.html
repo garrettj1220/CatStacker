@@ -124,6 +124,9 @@
           <p>Level reached: <span id="final-level">1</span></p>
           <p>Height reached: <span id="final-height">0</span> cats</p>
           <p>Score: <span id="final-score">0</span></p>
+          <p>Points earned: <span id="final-run-points">0</span></p>
+          <p class="bonus-points-line">Bonus points: <span id="final-bonus-points">0</span></p>
+          <p>Total added: <span id="final-total-points">0</span></p>
           <div class="overlay-actions">
             <button id="game-over-play-again" type="button">Play Again</button>
             <button id="game-over-main-menu" type="button">Main Menu</button>
@@ -134,6 +137,9 @@
         <div class="panel victory-panel">
           <h1>Victory!</h1>
           <p id="victory-mode">You beat CatStacker in Survival mode.</p>
+          <p>Points earned: <span id="victory-run-points">0</span></p>
+          <p class="bonus-points-line">Bonus points: <span id="victory-bonus-points">0</span></p>
+          <p>Total added: <span id="victory-total-points">0</span></p>
           <div id="victory-gallery" class="victory-gallery"></div>
           <div class="overlay-actions">
             <button id="victory-play-again" type="button">Play Again</button>
@@ -141,6 +147,7 @@
           </div>
         </div>
       </div>
+      <div id="bonus-burst" class="bonus-burst hidden">+0</div>
       <div class="hud">
         <button id="pause-button" class="pause-btn" type="button">Pause</button>
         <p class="level-label">Level <span id="level-value">1</span></p>

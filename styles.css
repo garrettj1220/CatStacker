@@ -506,6 +506,7 @@ canvas {
   align-items: center;
   justify-content: center;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.2s ease;
 }
 .shop-card.is-purchased .shop-card-overlay {
@@ -930,6 +931,10 @@ body.shop-open .slippery-warning {
   margin-bottom: 12px;
   font-family: "Fraunces", "Space Grotesk", serif;
 }
+.bonus-points-line {
+  color: #0f7a36;
+  font-weight: 700;
+}
 .overlay button {
   margin-top: 16px;
   padding: 12px 24px;
@@ -944,6 +949,37 @@ body.shop-open .slippery-warning {
 }
 .overlay button:hover {
   transform: translateY(-2px);
+}
+.bonus-burst {
+  position: absolute;
+  left: 50%;
+  top: 84px;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.14);
+  color: #1f8c43;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow: 0 10px 24px rgba(16, 109, 45, 0.18);
+  z-index: 210;
+}
+.bonus-burst.animate {
+  animation: bonusPop 0.72s ease forwards;
+}
+@keyframes bonusPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.92);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -14px) scale(1.06);
+  }
 }
 .slippery-warning {
   position: absolute;
