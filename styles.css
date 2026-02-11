@@ -689,6 +689,9 @@ canvas {
   transform: translateY(-2px);
 }
 .shop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
   background: rgba(8, 6, 18, 0.85);
 }
 #shop-panel .shop-panel-content {
@@ -704,6 +707,15 @@ canvas {
   gap: 18px;
   text-align: left;
   overflow: auto;
+}
+
+body.shop-open .hud,
+body.shop-open .unlock-panel,
+body.shop-open .record-track,
+body.shop-open .wind-indicator,
+body.shop-open .drop-timer,
+body.shop-open .slippery-warning {
+  display: none !important;
 }
 .shop-header {
   display: flex;

@@ -88,6 +88,7 @@ const CAT_COLORS = [
 const SHOP_ITEMS = [
   { key: "terracotta", title: "Terracotta Platform", cost: 500, img: "Art/Platforms/terracottaplatform.png" },
   { key: "tea", title: "Tea Platform", cost: 1500, img: "Art/Platforms/teaplatform.png" },
+  { key: "coffee", title: "Coffee Platform", cost: 2500, img: "Art/Platforms/coffeeplatform.png" },
   { key: "castle", title: "Castle Platform", cost: 3000, img: "Art/Platforms/castleplatform.png" },
   { key: "chicken", title: "Chicken Platform", cost: 5000, img: "Art/Platforms/chickenplatform.png" },
   { key: "human", title: "Human Platform", cost: 5000, img: "Art/Platforms/humanplatform.png" }
@@ -940,6 +941,7 @@ function hideShopPanelOnly() {
   if (shopPanel) {
     shopPanel.classList.add("hidden");
   }
+  document.body.classList.remove("shop-open");
 }
 
 function showMainMenu() {
@@ -979,6 +981,7 @@ function showShopPanel() {
   if (shopPanel) {
     shopPanel.classList.remove("hidden");
   }
+  document.body.classList.add("shop-open");
   updateShopPointsDisplay();
   renderShopGrid();
   audioManager.unlockAudio();
