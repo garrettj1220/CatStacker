@@ -36,6 +36,7 @@ const shopPanel = document.getElementById("shop-panel");
 const shopCloseButton = document.getElementById("shop-close");
 const shopPointsValue = document.getElementById("shop-points-value");
 const shopPanelPoints = document.getElementById("shop-panel-points");
+const shopCategories = document.getElementById("shop-categories");
 const shopGrid = document.getElementById("shop-grid");
 const shopPopup = document.getElementById("shop-popup");
 const shopPopupImage = document.getElementById("shop-popup-image");
@@ -51,6 +52,7 @@ const BEST_SURVIVAL_KEY = "catstacker-best-survival";
 const BEST_CHECKPOINT_KEY = "catstacker-best-checkpoint";
 const SHOP_POINTS_KEY = "catstacker-shop-points";
 const SHOP_PURCHASES_KEY = "catstacker-shop-purchases";
+const SHOP_BUFFS_KEY = "catstacker-shop-buffs";
 const EQUIPPED_PLATFORM_KEY = "catstacker-equipped-platform";
 const AUDIO_MUTED_KEY = "catstacker-audio-muted";
 const slipperyWarning = document.getElementById("slippery-warning");
@@ -60,6 +62,7 @@ const gameOverText = document.getElementById("game-over-text");
 const gameOverPlayAgain = document.getElementById("game-over-play-again");
 const gameOverMainMenu = document.getElementById("game-over-main-menu");
 const bonusBurst = document.getElementById("bonus-burst");
+const buffTray = document.getElementById("buff-tray");
 const PERSONAL_BEST_KEY = "catstacker-personal-best";
 
 const CAT_NAMES = [
@@ -101,6 +104,74 @@ const SHOP_ITEMS = [
   { key: "chicken", title: "Chicken Platform", cost: 3000, img: "Art/Platforms/chickenplatform.png" },
   { key: "human", title: "Human Platform", cost: 3000, img: "Art/Platforms/humanplatform.png" }
 ];
+const BUFF_ITEMS = [
+  {
+    key: "nineLives",
+    title: "9 Lives",
+    cost: 2500,
+    img: "Art/Items/9Lives.png",
+    description: "Set hearts to 9 for this level. One wobble-collapse rescue.",
+    durationMs: null
+  },
+  {
+    key: "catMagnet",
+    title: "Cat Magnet",
+    cost: 2000,
+    img: "Art/Items/CatMagnet.png",
+    description: "6s tower magnet aura. Drops snap to center alignment.",
+    durationMs: 6000
+  },
+  {
+    key: "catLife",
+    title: "Cat Life",
+    cost: 250,
+    img: "Art/Items/CatLife.png",
+    description: "Restore 1 heart, or add +1 if already full this level.",
+    durationMs: 0
+  },
+  {
+    key: "fifthSense",
+    title: "5th Sense",
+    cost: 500,
+    img: "Art/Items/5thSense.png",
+    description: "10s pulse showing the ideal drop zone.",
+    durationMs: 10000
+  },
+  {
+    key: "fogLens",
+    title: "Fog Lens",
+    cost: 200,
+    img: "Art/Items/FogLens.png",
+    description: "20s fog suppression for clearer visibility.",
+    durationMs: 20000
+  },
+  {
+    key: "stickyPaws",
+    title: "Sticky Paws",
+    cost: 250,
+    img: "Art/Items/StickyPaws.png",
+    description: "20s slippery-landing penalty disabled.",
+    durationMs: 20000
+  },
+  {
+    key: "steadyPaw",
+    title: "Steady Paw",
+    cost: 300,
+    img: "Art/Items/SteadyPaw.png",
+    description: "10s random early direction flips disabled.",
+    durationMs: 10000
+  },
+  {
+    key: "catString",
+    title: "Cat String",
+    cost: 200,
+    img: "Art/Items/CatString.png",
+    description: "10s temporary tower center guide line.",
+    durationMs: 10000
+  }
+];
+const BUFF_MAX_OWNED = 99;
+const SHOP_CATEGORIES = ["platforms", "buffs"];
 const AUDIO_ICON_ON = "Art/Icons/volume-on.svg";
 const AUDIO_ICON_OFF = "Art/Icons/volume-off.svg";
 const AUDIO_PATHS = {
@@ -570,11 +641,17 @@ const state = {
   swayBase: 0,
   dropTimerActive: false,
   dropTimerRemaining: 0,
+  activeShopCategory: "platforms",
   runPoints: 0,
   bonusPoints: 0,
   cleanStreak: 0,
   perfectChain: 0,
   stableWobbleStreak: 0,
+  activeBuffs: {},
+  maxHeartsThisLevel: MAX_HEARTS,
+  nineLivesSaveAvailable: false,
+  supportCatsVisual: 0,
+  supportCatsVisualTimer: 0,
   pointsAwardedThisRun: false
 };
 
@@ -582,11 +659,14 @@ let bestSurvivalScore = loadBestScore(BEST_SURVIVAL_KEY);
 let bestCheckpointScore = loadBestScore(BEST_CHECKPOINT_KEY);
 let shopPoints = loadShopPoints();
 const purchasedPlatforms = loadPurchasedPlatforms();
+const buffInventory = loadBuffInventory();
+const buffBuyQuantities = Object.fromEntries(BUFF_ITEMS.map((item) => [item.key, 1]));
 let equippedPlatformKey = loadEquippedPlatform();
 state.topScore = loadPersonalBest();
 updateTopScoreDisplay();
 updateShopPointsDisplay();
 updateMenuPlatformPreview();
+renderBuffTray();
 function loadBestScore(key) {
   try {
     const raw = window.localStorage.getItem(key);
@@ -621,6 +701,34 @@ function loadShopPoints() {
 function saveShopPoints() {
   try {
     window.localStorage.setItem(SHOP_POINTS_KEY, String(shopPoints));
+  } catch (error) {
+    // ignore
+  }
+}
+
+function loadBuffInventory() {
+  const defaults = Object.fromEntries(BUFF_ITEMS.map((item) => [item.key, 0]));
+  try {
+    const raw = window.localStorage.getItem(SHOP_BUFFS_KEY);
+    const parsed = JSON.parse(raw || "{}");
+    if (!parsed || typeof parsed !== "object") {
+      return { ...defaults };
+    }
+    BUFF_ITEMS.forEach((item) => {
+      const value = Number(parsed[item.key]);
+      defaults[item.key] = Number.isFinite(value)
+        ? clamp(Math.floor(value), 0, BUFF_MAX_OWNED)
+        : 0;
+    });
+    return defaults;
+  } catch (error) {
+    return { ...defaults };
+  }
+}
+
+function saveBuffInventory() {
+  try {
+    window.localStorage.setItem(SHOP_BUFFS_KEY, JSON.stringify(buffInventory));
   } catch (error) {
     // ignore
   }
@@ -786,27 +894,47 @@ function closeShopPopup() {
 function openShopPopup(item) {
   if (!shopPopup || !shopPopupImage || !shopPopupText) return;
   shopPopupImage.src = item.img;
-  shopPopupText.textContent = `${item.title} unlocked`;
+  const isBuff = BUFF_ITEMS.some((buff) => buff.key === item.key);
+  shopPopupText.textContent = isBuff ? `${item.title} added` : `${item.title} unlocked`;
   shopPopup.classList.remove("hidden");
   audioManager.unlockAudio();
   audioManager.unlock();
 
-  // Convenience: newly purchased platforms become the equipped platform immediately.
-  equipPlatform(item.key);
+  if (!isBuff) {
+    // Convenience: newly purchased platforms become the equipped platform immediately.
+    equipPlatform(item.key);
+  }
+  renderShopGrid();
+  renderBuffTray();
+}
+
+function getBuffItem(key) {
+  return BUFF_ITEMS.find((item) => item.key === key) || null;
+}
+
+function getBuffCount(key) {
+  return clamp(Math.floor(buffInventory[key] || 0), 0, BUFF_MAX_OWNED);
+}
+
+function setBuffCount(key, value) {
+  buffInventory[key] = clamp(Math.floor(value), 0, BUFF_MAX_OWNED);
+}
+
+function setActiveShopCategory(category) {
+  const nextCategory = SHOP_CATEGORIES.includes(category) ? category : "platforms";
+  state.activeShopCategory = nextCategory;
+  if (shopCategories) {
+    const buttons = shopCategories.querySelectorAll(".shop-category");
+    buttons.forEach((button) => {
+      const active = button.dataset.category === nextCategory;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
   renderShopGrid();
 }
 
-function renderShopGrid() {
-  if (!shopGrid) return;
-  shopGrid.innerHTML = "";
-  if (!SHOP_ITEMS.length) {
-    const empty = document.createElement("div");
-    empty.className = "shop-grid-empty";
-    empty.textContent = "No new items in the shop right now. Come back later.";
-    shopGrid.appendChild(empty);
-    return;
-  }
-
+function renderPlatformCards() {
   SHOP_ITEMS.forEach((item) => {
     const card = document.createElement("div");
     card.className = "shop-card";
@@ -867,6 +995,258 @@ function renderShopGrid() {
     card.appendChild(button);
     shopGrid.appendChild(card);
   });
+}
+
+function renderBuffCards() {
+  BUFF_ITEMS.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "shop-card buff-card";
+
+    const img = document.createElement("img");
+    img.src = item.img;
+    img.alt = item.title;
+
+    const name = document.createElement("div");
+    name.className = "shop-card-name";
+    name.textContent = item.title;
+
+    const description = document.createElement("p");
+    description.className = "shop-card-description";
+    description.textContent = item.description;
+
+    const controls = document.createElement("div");
+    controls.className = "buff-qty-controls";
+
+    const minus = document.createElement("button");
+    minus.type = "button";
+    minus.className = "buff-qty-btn";
+    minus.textContent = "−";
+
+    const qtyValue = document.createElement("span");
+    qtyValue.className = "buff-qty-value";
+
+    const plus = document.createElement("button");
+    plus.type = "button";
+    plus.className = "buff-qty-btn";
+    plus.textContent = "+";
+
+    controls.appendChild(minus);
+    controls.appendChild(qtyValue);
+    controls.appendChild(plus);
+
+    const ownedBadge = document.createElement("div");
+    ownedBadge.className = "buff-owned";
+
+    const buyButton = document.createElement("button");
+    buyButton.type = "button";
+
+    const owned = getBuffCount(item.key);
+    const remainingCap = Math.max(0, BUFF_MAX_OWNED - owned);
+    const maxAffordable = Math.floor(shopPoints / item.cost);
+    const maxBuy = Math.min(remainingCap, maxAffordable);
+    const currentQty = clamp(buffBuyQuantities[item.key] || 1, 1, Math.max(1, remainingCap));
+    buffBuyQuantities[item.key] = currentQty;
+    qtyValue.textContent = String(currentQty);
+    ownedBadge.textContent = `Owned: ${owned}`;
+
+    const atMax = owned >= BUFF_MAX_OWNED;
+    minus.disabled = currentQty <= 1 || atMax;
+    plus.disabled = currentQty >= Math.max(1, remainingCap) || atMax;
+    minus.addEventListener("click", () => {
+      buffBuyQuantities[item.key] = Math.max(1, (buffBuyQuantities[item.key] || 1) - 1);
+      renderShopGrid();
+    });
+    plus.addEventListener("click", () => {
+      buffBuyQuantities[item.key] = Math.min(Math.max(1, remainingCap), (buffBuyQuantities[item.key] || 1) + 1);
+      renderShopGrid();
+    });
+
+    if (atMax) {
+      buyButton.disabled = true;
+      buyButton.textContent = "Max Owned";
+    } else {
+      const qty = buffBuyQuantities[item.key] || 1;
+      const totalCost = qty * item.cost;
+      const canAfford = maxBuy >= qty && totalCost <= shopPoints;
+      buyButton.disabled = !canAfford;
+      buyButton.textContent = canAfford ? `Buy ${qty} (${totalCost})` : `Need ${totalCost}`;
+      buyButton.addEventListener("click", () => {
+        const quantity = clamp(Math.floor(buffBuyQuantities[item.key] || 1), 1, BUFF_MAX_OWNED);
+        const currentOwned = getBuffCount(item.key);
+        const cap = Math.max(0, BUFF_MAX_OWNED - currentOwned);
+        if (cap <= 0) return;
+        const buyQty = Math.min(quantity, cap);
+        const cost = buyQty * item.cost;
+        if (shopPoints < cost) return;
+        shopPoints -= cost;
+        setBuffCount(item.key, currentOwned + buyQty);
+        saveShopPoints();
+        saveBuffInventory();
+        updateShopPointsDisplay();
+        renderShopGrid();
+        renderBuffTray();
+        openShopPopup(item);
+      });
+    }
+
+    card.appendChild(img);
+    card.appendChild(name);
+    card.appendChild(description);
+    card.appendChild(controls);
+    card.appendChild(ownedBadge);
+    card.appendChild(buyButton);
+    shopGrid.appendChild(card);
+  });
+}
+
+function renderShopGrid() {
+  if (!shopGrid) return;
+  shopGrid.innerHTML = "";
+  if (state.activeShopCategory === "buffs") {
+    if (!BUFF_ITEMS.length) {
+      const empty = document.createElement("div");
+      empty.className = "shop-grid-empty";
+      empty.textContent = "No new buff items in the shop right now. Come back later.";
+      shopGrid.appendChild(empty);
+      return;
+    }
+    renderBuffCards();
+    return;
+  }
+  if (!SHOP_ITEMS.length) {
+    const empty = document.createElement("div");
+    empty.className = "shop-grid-empty";
+    empty.textContent = "No new items in the shop right now. Come back later.";
+    shopGrid.appendChild(empty);
+    return;
+  }
+  renderPlatformCards();
+}
+
+function isBuffActive(key) {
+  return !!state.activeBuffs[key];
+}
+
+function activateTimedBuff(key, durationMs) {
+  state.activeBuffs[key] = {
+    startedAt: performance.now(),
+    expiresAt: performance.now() + Math.max(0, durationMs || 0)
+  };
+}
+
+function clearActiveBuffs() {
+  state.activeBuffs = {};
+  state.nineLivesSaveAvailable = false;
+  state.maxHeartsThisLevel = MAX_HEARTS;
+  state.supportCatsVisual = 0;
+  state.supportCatsVisualTimer = 0;
+}
+
+function renderBuffTray() {
+  if (!buffTray) return;
+  buffTray.innerHTML = "";
+  BUFF_ITEMS.forEach((item) => {
+    const count = getBuffCount(item.key);
+    if (count <= 0) return;
+    const entry = document.createElement("button");
+    entry.type = "button";
+    entry.className = "buff-chip";
+    entry.dataset.buff = item.key;
+
+    const iconWrap = document.createElement("span");
+    iconWrap.className = "buff-chip-icon-wrap";
+
+    const img = document.createElement("img");
+    img.src = item.img;
+    img.alt = item.title;
+    img.className = "buff-chip-icon";
+
+    const countBadge = document.createElement("span");
+    countBadge.className = "buff-chip-count";
+    countBadge.textContent = String(count);
+
+    const name = document.createElement("span");
+    name.className = "buff-chip-name";
+    name.textContent = item.title;
+
+    iconWrap.appendChild(img);
+    iconWrap.appendChild(countBadge);
+    entry.appendChild(iconWrap);
+    entry.appendChild(name);
+    entry.classList.toggle("is-active", isBuffActive(item.key));
+    entry.addEventListener("click", () => useBuff(item.key));
+    buffTray.appendChild(entry);
+  });
+}
+
+function consumeBuff(key) {
+  const count = getBuffCount(key);
+  if (count <= 0) return false;
+  setBuffCount(key, count - 1);
+  saveBuffInventory();
+  return true;
+}
+
+function useBuff(key) {
+  if (state.mode !== "running" || state.paused) return;
+  const item = getBuffItem(key);
+  if (!item) return;
+  if (key !== "catLife" && isBuffActive(key)) return;
+  if (!consumeBuff(key)) return;
+
+  audioManager.unlockAudio();
+  audioManager.click();
+  const now = performance.now();
+
+  if (key === "catLife") {
+    const maxHearts = Math.max(MAX_HEARTS, state.maxHeartsThisLevel);
+    if (state.hearts >= maxHearts) {
+      state.maxHeartsThisLevel = maxHearts + 1;
+    }
+    state.hearts = Math.min(state.maxHeartsThisLevel, state.hearts + 1);
+    triggerBonusBurst("+1 Life");
+  } else if (key === "nineLives") {
+    state.maxHeartsThisLevel = Math.max(state.maxHeartsThisLevel, 9);
+    state.hearts = Math.max(state.hearts, 9);
+    state.nineLivesSaveAvailable = true;
+    state.activeBuffs[key] = { startedAt: now, expiresAt: Infinity };
+    triggerBonusBurst("9 Lives Ready");
+  } else if (item.durationMs && item.durationMs > 0) {
+    activateTimedBuff(key, item.durationMs);
+    triggerBonusBurst(`${item.title} Active`);
+  }
+
+  renderHearts();
+  renderBuffTray();
+}
+
+function updateActiveBuffs(now = performance.now()) {
+  let changed = false;
+  Object.entries(state.activeBuffs).forEach(([key, data]) => {
+    if (!data || !Number.isFinite(data.expiresAt)) return;
+    if (now >= data.expiresAt) {
+      delete state.activeBuffs[key];
+      changed = true;
+    }
+  });
+  if (changed) {
+    renderBuffTray();
+  }
+}
+
+function getFogOpacityModifier() {
+  return isBuffActive("fogLens") ? 0.03 : 1;
+}
+
+function getSlipThreshold() {
+  if (isBuffActive("stickyPaws")) {
+    return DEFAULT_MISS_OFFSET_RATIO;
+  }
+  return state.missOffsetRatio || DEFAULT_MISS_OFFSET_RATIO;
+}
+
+function shouldDisableRandomDirectionChanges() {
+  return isBuffActive("steadyPaw");
 }
 
 function pointsPerCat() {
@@ -970,7 +1350,9 @@ function showMainMenu() {
   state.cleanStreak = 0;
   state.perfectChain = 0;
   state.stableWobbleStreak = 0;
+  clearActiveBuffs();
   state.pointsAwardedThisRun = false;
+  renderBuffTray();
   updateMenuBestScores();
   updateTopScoreDisplay();
   audioManager.onLevelChange(null);
@@ -1006,7 +1388,7 @@ function showShopPanel() {
   }
   document.body.classList.add("shop-open");
   updateShopPointsDisplay();
-  renderShopGrid();
+  setActiveShopCategory(state.activeShopCategory || "platforms");
   audioManager.unlockAudio();
 }
 function closeShopPanel() {
@@ -1114,6 +1496,16 @@ async function loadAssets() {
           console.warn(`Failed to load platform ${item.key}`);
           resolve();
         };
+      })
+    );
+  });
+  BUFF_ITEMS.forEach((item) => {
+    promises.push(
+      new Promise((resolve) => {
+        const img = new Image();
+        img.src = item.img;
+        img.onload = resolve;
+        img.onerror = resolve;
       })
     );
   });
@@ -1226,8 +1618,10 @@ function beginLevel(levelIndex, skipOverlay = false) {
   state.cameraTargetZoom = 1;
   state.cameraYOffset = 0;
   state.cameraTargetYOffset = 0;
+  clearActiveBuffs();
   state.hearts = MAX_HEARTS;
   renderHearts();
+  renderBuffTray();
   const unlockIndex = clamp(safeIndex, 0, CAT_NAMES.length - 1);
   const levelCatName =
     state.gameMode === "survival" && safeIndex >= CAT_NAMES.length
@@ -1381,6 +1775,7 @@ function attemptDrop(forced = false) {
     vx: horizontalDrift,
     vy: 0,
     forcedDrop: !!forced,
+    magnetized: isBuffActive("catMagnet"),
     width: CAT_WIDTH,
     height: metadata.renderHeight || CAT_HEIGHT,
     layerHeight: metadata.renderHeight || CAT_HEIGHT,
@@ -1412,7 +1807,7 @@ function updatePreview() {
   const desiredSpeed = (state.levelBasePreviewSpeed + desiredBoost) * multiplier;
   state.previewSpeedCurrent += (desiredSpeed - state.previewSpeedCurrent) * PREVIEW_ACCEL;
   const levelConfig = getLevelConfig();
-  if (levelConfig.previewDirectionChangeChance && state.previewDirectionCooldown <= 0) {
+  if (!shouldDisableRandomDirectionChanges() && levelConfig.previewDirectionChangeChance && state.previewDirectionCooldown <= 0) {
     if (Math.random() < levelConfig.previewDirectionChangeChance) {
       state.previewDirection *= -1;
       state.previewDirectionCooldown = levelConfig.previewDirectionCooldown || 0;
@@ -1454,6 +1849,12 @@ function updateActiveCat(dt = 1) {
   cat.y += cat.vy * dt;
   cat.x += (cat.vx || 0) * dt;
   cat.vx = (cat.vx || 0) * FRICTION_PER_SUBSTEP;
+  if (cat.magnetized) {
+    const topCat = state.stack[state.stack.length - 1];
+    const targetCenter = topCat ? topCat.x + topCat.width / 2 + (state.sway || 0) : canvas.width / 2;
+    const targetX = clampToPlatform(targetCenter - cat.width / 2, cat.width);
+    cat.vx += (targetX - cat.x) * 0.08 * dt;
+  }
   // Wind applies only while a cat is falling.
   const effect = state.currentEffect;
   if (effect?.wind) {
@@ -1476,6 +1877,11 @@ function updateActiveCat(dt = 1) {
   if (cat.y >= targetTop) {
     cat.y = targetTop;
     cat.vy = 0;
+    if (cat.magnetized) {
+      const topCat = state.stack[state.stack.length - 1];
+      const targetCenter = topCat ? topCat.x + topCat.width / 2 + (state.sway || 0) : canvas.width / 2;
+      cat.x = clampToPlatform(targetCenter - cat.width / 2, cat.width);
+    }
     if (cat.forcedDrop) {
       // Timed-out drops always bounce out and cost a life, even if aligned.
       bounceMissedCat(cat);
@@ -1530,13 +1936,13 @@ function finalizeCat(cat) {
       state.perfectChain = 0;
     }
     if (absOffset > placed.width * 0.45) {
-      triggerCollapse();
+      triggerCollapse("tilt");
       return;
     }
   }
   // Every successful placement regenerates 1 life (up to max).
-  if (state.hearts < MAX_HEARTS) {
-    state.hearts = Math.min(MAX_HEARTS, state.hearts + 1);
+  if (state.hearts < state.maxHeartsThisLevel) {
+    state.hearts = Math.min(state.maxHeartsThisLevel, state.hearts + 1);
     renderHearts();
   }
 
@@ -1545,8 +1951,8 @@ function finalizeCat(cat) {
   if (wobbleRemaining >= 0.75) {
     state.stableWobbleStreak += 1;
     if (state.stableWobbleStreak >= 10) {
-      const hadRoom = state.hearts < MAX_HEARTS;
-      state.hearts = Math.min(MAX_HEARTS, state.hearts + 1);
+      const hadRoom = state.hearts < state.maxHeartsThisLevel;
+      state.hearts = Math.min(state.maxHeartsThisLevel, state.hearts + 1);
       renderHearts();
       state.stableWobbleStreak = 0;
       if (hadRoom) {
@@ -1637,16 +2043,35 @@ function checkCollapse() {
   const topOffset = getTopCenterOffset();
   const threshold = getThresholdForOffset(topOffset);
   if (Math.abs(topOffset) >= threshold && threshold > 0) {
-    triggerCollapse();
+    triggerCollapse("tilt");
     return;
   }
   if (!boundsCheck) {
-    triggerCollapse();
+    triggerCollapse("bounds");
   }
 }
 
-function triggerCollapse() {
+function tryNineLivesRescue(reason) {
+  if (reason !== "wobble") return false;
+  if (!state.nineLivesSaveAvailable || !isBuffActive("nineLives")) return false;
+  state.nineLivesSaveAvailable = false;
+  state.supportCatsVisual = 9;
+  state.supportCatsVisualTimer = 2600;
+  state.wobble = 0;
+  state.wobbleTarget = 0;
+  state.imbalanceTrend = 0;
+  state.dynamicThresholdLeft = BASE_COLLAPSE_THRESHOLD;
+  state.dynamicThresholdRight = BASE_COLLAPSE_THRESHOLD;
+  state.hearts = Math.max(1, state.hearts);
+  state.activeCat = null;
+  triggerBonusBurst("9 Lives Rescue");
+  renderHearts();
+  return true;
+}
+
+function triggerCollapse(reason = "collapse") {
   if (state.mode !== "running") return;
+  if (tryNineLivesRescue(reason)) return;
   state.mode = "tumbling";
   state.collapseTimer = FALL_DURATION;
   state.activeCat = null;
@@ -1671,6 +2096,8 @@ function updateTumble() {
 
 function endRun() {
   state.mode = "gameover";
+  clearActiveBuffs();
+  renderBuffTray();
   state.record = Math.max(state.record, state.score);
   maybeUpdateTopScore();
   finalHeight.textContent = state.stack.length;
@@ -1745,6 +2172,7 @@ function clampToPlatform(x, width) {
 function update(deltaRatio = 1, deltaMs = GAME_FRAME_DELTA_MS) {
   if (!assetsLoaded) return;
   if (state.paused) return;
+  updateActiveBuffs();
   const levelEffect = getLevelEffect(getLevelNumber());
   state.currentEffect = levelEffect;
   updateFog(deltaMs, levelEffect);
@@ -1779,6 +2207,12 @@ function update(deltaRatio = 1, deltaMs = GAME_FRAME_DELTA_MS) {
   state.wobble = clamp(state.wobble, 0, WOBBLE_THRESHOLD * 1.4);
   state.imbalanceTrend *= 0.96;
   updateDynamicThreshold();
+  if (state.supportCatsVisualTimer > 0) {
+    state.supportCatsVisualTimer = Math.max(0, state.supportCatsVisualTimer - deltaMs);
+    if (state.supportCatsVisualTimer <= 0) {
+      state.supportCatsVisual = 0;
+    }
+  }
   updateCamera();
 }
 
@@ -2152,10 +2586,11 @@ function handleFogCatDrop() {
 }
 
 function drawFog() {
-  if (state.fogOpacity <= 0) return;
+  const opacity = state.fogOpacity * getFogOpacityModifier();
+  if (opacity <= 0) return;
   ctx.save();
   const fogColor = state.showSun ? "rgba(255, 217, 178, " : "rgba(255, 255, 255, ";
-  ctx.fillStyle = `${fogColor}${Math.min(0.7, state.fogOpacity)})`;
+  ctx.fillStyle = `${fogColor}${Math.min(0.7, opacity)})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.restore();
 }
@@ -2231,10 +2666,38 @@ function roundedRect(x, y, width, height, radius) {
 }
 
 function drawStack() {
+  drawSupportCatsVisual();
   state.stack.forEach((cat) => drawCat(cat));
   if (state.activeCat) {
     drawCat(state.activeCat);
   }
+}
+
+function drawSupportCatsVisual() {
+  if (state.supportCatsVisual <= 0 || !state.stack.length) return;
+  const template = state.stack[0];
+  if (!template?.image) return;
+  const count = Math.min(9, state.supportCatsVisual);
+  const yBase = BASE_Y - template.height;
+  ctx.save();
+  ctx.globalAlpha = 0.36;
+  for (let i = 0; i < count; i += 1) {
+    const wobble = (i % 2 === 0 ? -1 : 1) * 6;
+    const x = clampToPlatform(canvas.width / 2 - template.width / 2 + wobble, template.width);
+    const y = yBase - i * (template.height * 0.18);
+    ctx.drawImage(
+      template.image,
+      0,
+      template.cropTop || 0,
+      template.image.width,
+      template.srcHeight || template.image.height,
+      x,
+      y,
+      template.width,
+      template.height
+    );
+  }
+  ctx.restore();
 }
 
 function drawCat(cat) {
@@ -2323,9 +2786,59 @@ function render() {
   drawStack();
   ctx.restore();
   drawPreview();
+  drawBuffGuides();
   drawLightning();
   drawFog();
   updateHUD();
+}
+
+function drawBuffGuides() {
+  if (state.mode !== "running") return;
+  const topCat = state.stack[state.stack.length - 1];
+  if (!topCat) return;
+  const windPush = state.currentEffect?.wind?.push || 0;
+  const windCompensation = state.currentEffect?.wind ? state.wind * windPush * 900 : 0;
+  const targetCenter = topCat.x + topCat.width / 2 + (state.sway || 0) + windCompensation;
+  const towerCenterX = worldToScreenX(targetCenter);
+  const towerTopY = worldToScreenY(BASE_Y - state.stackHeight);
+
+  if (isBuffActive("catMagnet")) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(110, 204, 255, 0.7)";
+    ctx.lineWidth = 4;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.arc(towerCenterX, towerTopY + 18, 64, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (isBuffActive("catString")) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 7]);
+    ctx.beginPath();
+    ctx.moveTo(towerCenterX, 0);
+    ctx.lineTo(towerCenterX, canvas.height);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (isBuffActive("fifthSense")) {
+    const pulse = 12 + ((performance.now() / 110) % 1) * 12;
+    ctx.save();
+    ctx.strokeStyle = "rgba(122, 255, 171, 0.85)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(towerCenterX, towerTopY + 14, pulse, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(towerCenterX, towerTopY + 14, 4, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(122, 255, 171, 0.9)";
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 function updateHUD() {
@@ -2341,14 +2854,14 @@ function updateHUD() {
     ? "linear-gradient(90deg, #ef4444, #f97316)"
     : "linear-gradient(90deg, #22c55e, #14b8a6)";
   if (remaining <= 0 && state.mode === "running") {
-    triggerCollapse();
+    triggerCollapse("wobble");
   }
   updateSlipperyWarning();
 }
 
 function updateSlipperyWarning() {
   if (!slipperyWarning) return;
-  slipperyWarning.classList.toggle("hidden", !state.skullWarningVisible);
+  slipperyWarning.classList.toggle("hidden", !state.skullWarningVisible || isBuffActive("stickyPaws"));
 }
 
 function updateUnlocks() {
@@ -2432,6 +2945,8 @@ function checkVictory() {
 
 function showVictoryScreen() {
   overlay.classList.add("hidden");
+  clearActiveBuffs();
+  renderBuffTray();
   recordModeBest(state.score);
   if (!victoryScreen) return;
   const modeLabel =
@@ -2535,7 +3050,8 @@ function triggerLadderAdvance() {
 function renderHearts() {
   if (!heartRow) return;
   heartRow.innerHTML = "";
-  for (let i = 0; i < MAX_HEARTS; i += 1) {
+  const totalHearts = Math.max(MAX_HEARTS, state.maxHeartsThisLevel || MAX_HEARTS);
+  for (let i = 0; i < totalHearts; i += 1) {
     const heart = document.createElement("span");
     heart.className = "heart-icon";
     const fill = i < state.hearts ? "#ef4444" : "#9ca3af";
@@ -2567,6 +3083,10 @@ function loop(timestamp) {
 
 function worldToScreenX(worldX) {
   return canvas.width / 2 + state.cameraZoom * (worldX - canvas.width / 2);
+}
+
+function worldToScreenY(worldY) {
+  return BASE_Y + state.cameraZoom * (worldY - BASE_Y + state.cameraYOffset);
 }
 
 function screenToWorldY(screenY) {
@@ -2650,6 +3170,16 @@ shopPanel &&
     if (event.target === shopPanel) {
       closeShopPanel();
     }
+  });
+shopCategories &&
+  shopCategories.addEventListener("click", (event) => {
+    const button = event.target.closest(".shop-category");
+    if (!button) return;
+    const category = button.dataset.category;
+    if (!category) return;
+    audioManager.unlockAudio();
+    audioManager.click();
+    setActiveShopCategory(category);
   });
 shopPopupClose &&
   shopPopupClose.addEventListener("click", () => {
@@ -2736,7 +3266,7 @@ function isMissedDrop(cat) {
   if (!state.stack.length) return false;
   const previous = state.stack[state.stack.length - 1];
   const offset = Math.abs(cat.x + cat.width / 2 - (previous.x + previous.width / 2));
-  const thresholdRatio = state.missOffsetRatio || DEFAULT_MISS_OFFSET_RATIO;
+  const thresholdRatio = getSlipThreshold();
   return offset > cat.width * thresholdRatio;
 }
 
@@ -2751,7 +3281,7 @@ function bounceMissedCat(cat) {
   state.hearts = Math.max(0, state.hearts - 1);
   renderHearts();
   if (state.hearts <= 0) {
-    triggerCollapse();
+    triggerCollapse("lives");
   }
 }
 
