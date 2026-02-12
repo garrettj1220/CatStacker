@@ -52,8 +52,10 @@ const BEST_SURVIVAL_KEY = "catstacker-best-survival";
 const BEST_CHECKPOINT_KEY = "catstacker-best-checkpoint";
 const SHOP_POINTS_KEY = "catstacker-shop-points";
 const SHOP_PURCHASES_KEY = "catstacker-shop-purchases";
+const SHOP_BORDER_PURCHASES_KEY = "catstacker-shop-border-purchases";
 const SHOP_BUFFS_KEY = "catstacker-shop-buffs";
 const EQUIPPED_PLATFORM_KEY = "catstacker-equipped-platform";
+const EQUIPPED_BORDER_KEY = "catstacker-equipped-border";
 const AUDIO_MUTED_KEY = "catstacker-audio-muted";
 const slipperyWarning = document.getElementById("slippery-warning");
 const victoryModeLabel = document.getElementById("victory-mode");
@@ -103,6 +105,16 @@ const SHOP_ITEMS = [
   { key: "blondegirl", title: "Blonde Girl Platform", cost: 2500, img: "Art/Platforms/blondegirlplatform.png" },
   { key: "chicken", title: "Chicken Platform", cost: 3000, img: "Art/Platforms/chickenplatform.png" },
   { key: "human", title: "Human Platform", cost: 3000, img: "Art/Platforms/humanplatform.png" }
+];
+const BORDER_ITEMS = [
+  { key: "terracottaFrame", title: "Terracotta Frame", cost: 150, img: "Art/Borders/TerracottaFrame.png" },
+  { key: "ostrichFrame", title: "Ostrich Frame", cost: 150, img: "Art/Borders/OstrichFrame.png" },
+  { key: "pillBottleFrame", title: "Pill Bottle Frame", cost: 250, img: "Art/Borders/PillBottleFrame.png" },
+  { key: "loafCatFrame", title: "Loaf Cat Frame", cost: 250, img: "Art/Borders/LoafCatFrame.png" },
+  { key: "catHouseFrame", title: "Cat House Frame", cost: 500, img: "Art/Borders/CatHouseFrame.png" },
+  { key: "duckFrame", title: "Duck Frame", cost: 500, img: "Art/Borders/DuckFrame.png" },
+  { key: "lipsFrame", title: "Lips Frame", cost: 750, img: "Art/Borders/LipsFrame.png" },
+  { key: "blondeGirlFrame", title: "Blonde Girl Frame", cost: 2000, img: "Art/Borders/BlondeGirlFrame.png" }
 ];
 const BUFF_ITEMS = [
   {
@@ -171,7 +183,7 @@ const BUFF_ITEMS = [
   }
 ];
 const BUFF_MAX_OWNED = 99;
-const SHOP_CATEGORIES = ["platforms", "buffs"];
+const SHOP_CATEGORIES = ["platforms", "borders", "buffs"];
 const AUDIO_ICON_ON = "Art/Icons/volume-on.svg";
 const AUDIO_ICON_OFF = "Art/Icons/volume-off.svg";
 const AUDIO_PATHS = {
@@ -183,6 +195,7 @@ const AUDIO_PATHS = {
   lightning: "Art/Audio/lightning.wav"
 };
 const DEFAULT_PLATFORM_KEY = "default";
+const DEFAULT_BORDER_KEY = "none";
 const INITIAL_RECORD = 0;
 const CAT_WIDTH = 160;
 const CAT_HEIGHT = 80;
@@ -659,9 +672,11 @@ let bestSurvivalScore = loadBestScore(BEST_SURVIVAL_KEY);
 let bestCheckpointScore = loadBestScore(BEST_CHECKPOINT_KEY);
 let shopPoints = loadShopPoints();
 const purchasedPlatforms = loadPurchasedPlatforms();
+const purchasedBorders = loadPurchasedBorders();
 const buffInventory = loadBuffInventory();
 const buffBuyQuantities = Object.fromEntries(BUFF_ITEMS.map((item) => [item.key, 1]));
 let equippedPlatformKey = loadEquippedPlatform();
+let equippedBorderKey = loadEquippedBorder();
 state.topScore = loadPersonalBest();
 updateTopScoreDisplay();
 updateShopPointsDisplay();
@@ -752,6 +767,25 @@ function saveEquippedPlatform() {
     // ignore
   }
 }
+
+function loadEquippedBorder() {
+  try {
+    const raw = window.localStorage.getItem(EQUIPPED_BORDER_KEY);
+    if (!raw) return DEFAULT_BORDER_KEY;
+    return String(raw);
+  } catch (error) {
+    // ignore
+  }
+  return DEFAULT_BORDER_KEY;
+}
+
+function saveEquippedBorder() {
+  try {
+    window.localStorage.setItem(EQUIPPED_BORDER_KEY, String(equippedBorderKey));
+  } catch (error) {
+    // ignore
+  }
+}
 function updateShopPointsDisplay() {
   if (shopPointsValue) {
     shopPointsValue.textContent = shopPoints.toString();
@@ -769,6 +803,16 @@ function canEquipPlatform(key) {
 function getEquippedPlatformItem() {
   if (!equippedPlatformKey || equippedPlatformKey === DEFAULT_PLATFORM_KEY) return null;
   return SHOP_ITEMS.find((item) => item.key === equippedPlatformKey) || null;
+}
+
+function canEquipBorder(key) {
+  if (!key || key === DEFAULT_BORDER_KEY) return true;
+  return purchasedBorders.has(key);
+}
+
+function getEquippedBorderItem() {
+  if (!equippedBorderKey || equippedBorderKey === DEFAULT_BORDER_KEY) return null;
+  return BORDER_ITEMS.find((item) => item.key === equippedBorderKey) || null;
 }
 
 function updateMenuPlatformPreview() {
@@ -801,6 +845,13 @@ function equipPlatform(key) {
   saveEquippedPlatform();
   updateMenuPlatformPreview();
 }
+
+function equipBorder(key) {
+  const desired = key || DEFAULT_BORDER_KEY;
+  if (!canEquipBorder(desired)) return;
+  equippedBorderKey = desired;
+  saveEquippedBorder();
+}
 function loadPurchasedPlatforms() {
   try {
     const raw = window.localStorage.getItem(SHOP_PURCHASES_KEY);
@@ -816,6 +867,27 @@ function loadPurchasedPlatforms() {
 function savePurchasedPlatforms() {
   try {
     window.localStorage.setItem(SHOP_PURCHASES_KEY, JSON.stringify([...purchasedPlatforms]));
+  } catch (error) {
+    // ignore
+  }
+}
+
+function loadPurchasedBorders() {
+  try {
+    const raw = window.localStorage.getItem(SHOP_BORDER_PURCHASES_KEY);
+    const parsed = JSON.parse(raw || "[]");
+    if (Array.isArray(parsed)) {
+      return new Set(parsed);
+    }
+  } catch (error) {
+    // ignore
+  }
+  return new Set();
+}
+
+function savePurchasedBorders() {
+  try {
+    window.localStorage.setItem(SHOP_BORDER_PURCHASES_KEY, JSON.stringify([...purchasedBorders]));
   } catch (error) {
     // ignore
   }
@@ -901,14 +973,18 @@ function openShopPopup(item) {
   if (!shopPopup || !shopPopupImage || !shopPopupText) return;
   shopPopupImage.src = item.img;
   const isBuff = BUFF_ITEMS.some((buff) => buff.key === item.key);
+  const isPlatform = SHOP_ITEMS.some((platform) => platform.key === item.key);
+  const isBorder = BORDER_ITEMS.some((border) => border.key === item.key);
   shopPopupText.textContent = isBuff ? `${item.title} added` : `${item.title} unlocked`;
   shopPopup.classList.remove("hidden");
   audioManager.unlockAudio();
   audioManager.unlock();
 
-  if (!isBuff) {
+  if (isPlatform) {
     // Convenience: newly purchased platforms become the equipped platform immediately.
     equipPlatform(item.key);
+  } else if (isBorder) {
+    equipBorder(item.key);
   }
   renderShopGrid();
   renderBuffTray();
@@ -1042,6 +1118,110 @@ function renderPlatformCards() {
   });
 }
 
+function renderBorderCards() {
+  const noneCard = document.createElement("div");
+  noneCard.className = "shop-card is-purchased";
+
+  const nonePreview = document.createElement("div");
+  nonePreview.className = "shop-card-none-preview";
+  nonePreview.textContent = "No Frame";
+
+  const noneOverlay = document.createElement("div");
+  noneOverlay.className = "shop-card-overlay";
+  const noneCheck = document.createElement("div");
+  noneCheck.className = "shop-card-check";
+  noneCheck.textContent = "✓";
+  noneOverlay.appendChild(noneCheck);
+
+  const noneName = document.createElement("div");
+  noneName.className = "shop-card-name";
+  noneName.textContent = "No Frame";
+
+  const noneButton = document.createElement("button");
+  noneButton.type = "button";
+  const noneEquipped = equippedBorderKey === DEFAULT_BORDER_KEY;
+  if (noneEquipped) {
+    noneCard.classList.add("is-equipped");
+    noneCheck.textContent = "Equipped";
+    noneButton.disabled = true;
+    noneButton.textContent = "Equipped";
+  } else {
+    noneButton.textContent = "Equip";
+    noneButton.addEventListener("click", () => {
+      equipBorder(DEFAULT_BORDER_KEY);
+      renderShopGrid();
+    });
+  }
+
+  noneCard.appendChild(nonePreview);
+  noneCard.appendChild(noneOverlay);
+  noneCard.appendChild(noneName);
+  noneCard.appendChild(noneButton);
+  shopGrid.appendChild(noneCard);
+
+  BORDER_ITEMS.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "shop-card";
+
+    const img = document.createElement("img");
+    img.src = item.img;
+    img.alt = item.title;
+
+    const overlayEl = document.createElement("div");
+    overlayEl.className = "shop-card-overlay";
+    const check = document.createElement("div");
+    check.className = "shop-card-check";
+    check.textContent = "✓";
+    overlayEl.appendChild(check);
+
+    const name = document.createElement("div");
+    name.className = "shop-card-name";
+    name.textContent = item.title;
+
+    const button = document.createElement("button");
+    button.type = "button";
+
+    const isPurchased = purchasedBorders.has(item.key);
+    const isEquipped = equippedBorderKey === item.key;
+    if (isPurchased) {
+      card.classList.add("is-purchased");
+      if (isEquipped) {
+        card.classList.add("is-equipped");
+        check.textContent = "Equipped";
+        button.disabled = true;
+        button.textContent = "Equipped";
+      } else {
+        button.textContent = "Equip";
+        button.addEventListener("click", () => {
+          equipBorder(item.key);
+          renderShopGrid();
+        });
+      }
+    } else {
+      const canAfford = shopPoints >= item.cost;
+      button.disabled = !canAfford;
+      button.textContent = canAfford ? `Buy ${item.cost}` : `Need ${item.cost}`;
+      button.addEventListener("click", () => {
+        if (purchasedBorders.has(item.key)) return;
+        if (shopPoints < item.cost) return;
+        shopPoints -= item.cost;
+        purchasedBorders.add(item.key);
+        saveShopPoints();
+        savePurchasedBorders();
+        updateShopPointsDisplay();
+        renderShopGrid();
+        openShopPopup(item);
+      });
+    }
+
+    card.appendChild(img);
+    card.appendChild(overlayEl);
+    card.appendChild(name);
+    card.appendChild(button);
+    shopGrid.appendChild(card);
+  });
+}
+
 function renderBuffCards() {
   BUFF_ITEMS.forEach((item) => {
     const card = document.createElement("div");
@@ -1147,6 +1327,17 @@ function renderBuffCards() {
 function renderShopGrid() {
   if (!shopGrid) return;
   shopGrid.innerHTML = "";
+  if (state.activeShopCategory === "borders") {
+    if (!BORDER_ITEMS.length) {
+      const empty = document.createElement("div");
+      empty.className = "shop-grid-empty";
+      empty.textContent = "No new border items in the shop right now. Come back later.";
+      shopGrid.appendChild(empty);
+      return;
+    }
+    renderBorderCards();
+    return;
+  }
   if (state.activeShopCategory === "buffs") {
     if (!BUFF_ITEMS.length) {
       const empty = document.createElement("div");
@@ -1508,6 +1699,7 @@ function maybeUpdateTopScore() {
 const assetCache = new Map();
 const catDefs = new Map();
 const platformDefs = new Map();
+const borderDefs = new Map();
 let assetsLoaded = false;
 let lastTimestamp = 0;
 
@@ -1539,6 +1731,22 @@ async function loadAssets() {
         };
         img.onerror = () => {
           console.warn(`Failed to load platform ${item.key}`);
+          resolve();
+        };
+      })
+    );
+  });
+  BORDER_ITEMS.forEach((item) => {
+    promises.push(
+      new Promise((resolve) => {
+        const img = new Image();
+        img.src = item.img;
+        img.onload = () => {
+          borderDefs.set(item.key, img);
+          resolve();
+        };
+        img.onerror = () => {
+          console.warn(`Failed to load border ${item.key}`);
           resolve();
         };
       })
@@ -2653,11 +2861,6 @@ function drawPlatform() {
   ctx.save();
 
   if (platformImg) {
-    // Keep skin platforms clean without the larger dark slab behind them.
-    ctx.fillStyle = "rgba(27, 20, 36, 0.24)";
-    roundedRect(x + 6, y + 18, platform.width - 12, renderHeight - 8, 14);
-    ctx.fill();
-
     // Clip so platform skins don't spill outside the rounded shape.
     ctx.save();
     roundedRect(x, y, platform.width, renderHeight, 14);
@@ -2701,6 +2904,16 @@ function drawPlatform() {
     ctx.fillRect(x + 20, y + 14, platform.width - 40, 2);
     ctx.globalAlpha = 1;
   }
+  ctx.restore();
+}
+
+function drawBorderFrame() {
+  const borderItem = getEquippedBorderItem();
+  if (!borderItem) return;
+  const frame = borderDefs.get(borderItem.key);
+  if (!frame) return;
+  ctx.save();
+  ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
   ctx.restore();
 }
 
@@ -2842,6 +3055,7 @@ function render() {
   drawBuffGuides();
   drawLightning();
   drawFog();
+  drawBorderFrame();
   updateHUD();
 }
 
