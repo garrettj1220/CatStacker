@@ -98,9 +98,9 @@ const CAT_COLORS = [
 const SHOP_ITEMS = [
   { key: "terracotta", title: "Terracotta Platform", cost: 250, img: "Art/Platforms/terracottaplatform.png" },
   { key: "tea", title: "Tea Platform", cost: 1000, img: "Art/Platforms/teaplatform.png" },
+  { key: "castle", title: "Castle Platform", cost: 2000, img: "Art/Platforms/castleplatform.png" },
   { key: "coffee", title: "Coffee Platform", cost: 2000, img: "Art/Platforms/coffeeplatform.png" },
   { key: "blondegirl", title: "Blonde Girl Platform", cost: 2500, img: "Art/Platforms/blondegirlplatform.png" },
-  { key: "castle", title: "Castle Platform", cost: 2000, img: "Art/Platforms/castleplatform.png" },
   { key: "chicken", title: "Chicken Platform", cost: 3000, img: "Art/Platforms/chickenplatform.png" },
   { key: "human", title: "Human Platform", cost: 3000, img: "Art/Platforms/humanplatform.png" }
 ];
