@@ -215,8 +215,8 @@ const IMBALANCE_SHRINK_MULTIPLIER = 0.35;
 const DEFAULT_MISS_OFFSET_RATIO = 0.36;
 const LIGHTNING_DEBUFF_MS = 2000;
 const LIGHTNING_SHAKE_DURATION = 280;
-const LIGHTNING_SHOCK_STRENGTH = 5;
-const LIGHTNING_FLASH_DECAY = 0.0025;
+const LIGHTNING_SHOCK_STRENGTH = 2.8;
+const LIGHTNING_FLASH_DECAY = 0.0042;
 const RAIN_DROPS = 160;
 const RAIN_SPAWN_RATE = 0.008;
 const WIND_UI_KPH_SCALE = 1;
@@ -777,13 +777,19 @@ function updateMenuPlatformPreview() {
   if (!el) return;
   const item = getEquippedPlatformItem();
   if (item?.img) {
+    el.style.background = "rgba(255,255,255,0.08)";
     el.style.backgroundImage = `url("${item.img}")`;
-    el.style.backgroundColor = "rgba(255,255,255,0.08)";
+    el.style.backgroundSize = "contain";
+    el.style.backgroundRepeat = "no-repeat";
+    el.style.backgroundPosition = "center";
     if (labelEl) labelEl.textContent = item.title;
   } else {
     el.style.backgroundImage = "";
     el.style.background =
       "linear-gradient(180deg, rgba(255, 205, 145, 0.95), rgba(232, 125, 84, 0.95))";
+    el.style.backgroundSize = "";
+    el.style.backgroundRepeat = "";
+    el.style.backgroundPosition = "";
     if (labelEl) labelEl.textContent = "Default Platform";
   }
 }
@@ -935,6 +941,45 @@ function setActiveShopCategory(category) {
 }
 
 function renderPlatformCards() {
+  const defaultCard = document.createElement("div");
+  defaultCard.className = "shop-card is-purchased";
+
+  const defaultPreview = document.createElement("div");
+  defaultPreview.className = "shop-card-default-preview";
+
+  const defaultOverlay = document.createElement("div");
+  defaultOverlay.className = "shop-card-overlay";
+  const defaultCheck = document.createElement("div");
+  defaultCheck.className = "shop-card-check";
+  defaultCheck.textContent = "✓";
+  defaultOverlay.appendChild(defaultCheck);
+
+  const defaultName = document.createElement("div");
+  defaultName.className = "shop-card-name";
+  defaultName.textContent = "Default Platform";
+
+  const defaultButton = document.createElement("button");
+  defaultButton.type = "button";
+  const defaultEquipped = equippedPlatformKey === DEFAULT_PLATFORM_KEY;
+  if (defaultEquipped) {
+    defaultCard.classList.add("is-equipped");
+    defaultCheck.textContent = "Equipped";
+    defaultButton.disabled = true;
+    defaultButton.textContent = "Equipped";
+  } else {
+    defaultButton.textContent = "Equip";
+    defaultButton.addEventListener("click", () => {
+      equipPlatform(DEFAULT_PLATFORM_KEY);
+      renderShopGrid();
+    });
+  }
+
+  defaultCard.appendChild(defaultPreview);
+  defaultCard.appendChild(defaultOverlay);
+  defaultCard.appendChild(defaultName);
+  defaultCard.appendChild(defaultButton);
+  shopGrid.appendChild(defaultCard);
+
   SHOP_ITEMS.forEach((item) => {
     const card = document.createElement("div");
     card.className = "shop-card";
@@ -1946,18 +1991,20 @@ function finalizeCat(cat) {
     renderHearts();
   }
 
-  // Staying above 75% wobble meter for 10 placements grants an extra life.
-  const wobbleRemaining = Math.max(0, 1 - state.wobble / WOBBLE_THRESHOLD);
-  if (wobbleRemaining >= 0.75) {
-    state.stableWobbleStreak += 1;
-    if (state.stableWobbleStreak >= 10) {
-      const hadRoom = state.hearts < state.maxHeartsThisLevel;
-      state.hearts = Math.min(state.maxHeartsThisLevel, state.hearts + 1);
-      renderHearts();
-      state.stableWobbleStreak = 0;
-      if (hadRoom) {
+  // Staying above 75% wobble for 10 placements grants one extra life,
+  // but only while the player is currently below max hearts.
+  if (state.hearts < state.maxHeartsThisLevel) {
+    const wobbleRemaining = Math.max(0, 1 - state.wobble / WOBBLE_THRESHOLD);
+    if (wobbleRemaining >= 0.75) {
+      state.stableWobbleStreak += 1;
+      if (state.stableWobbleStreak >= 10) {
+        state.hearts = Math.min(state.maxHeartsThisLevel, state.hearts + 1);
+        renderHearts();
+        state.stableWobbleStreak = 0;
         triggerBonusBurst("+1 Life");
       }
+    } else {
+      state.stableWobbleStreak = 0;
     }
   } else {
     state.stableWobbleStreak = 0;
@@ -2404,7 +2451,7 @@ function drawLightning() {
     ctx.lineCap = "round";
     state.lightningFlashes.forEach((flash) => {
       const alpha = Math.max(0, 1 - flash.progress / flash.duration);
-      ctx.globalAlpha = alpha * 0.7;
+      ctx.globalAlpha = alpha * 0.45;
       ctx.strokeStyle = "rgba(255,255,255,0.6)";
       ctx.beginPath();
       ctx.moveTo(flash.x, -20);
@@ -2415,7 +2462,7 @@ function drawLightning() {
   }
   if (state.lightningFlash > 0) {
     ctx.save();
-    ctx.globalAlpha = Math.min(0.45, state.lightningFlash * 0.35);
+    ctx.globalAlpha = Math.min(0.22, state.lightningFlash * 0.2);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
@@ -2604,12 +2651,13 @@ function drawPlatform() {
     equipped && equipped !== DEFAULT_PLATFORM_KEY ? platformDefs.get(equipped) : null;
   const renderHeight = platformImg ? 54 : platform.height;
   ctx.save();
-  // Base shadow.
-  ctx.fillStyle = "#2b1d3d";
-  roundedRect(x - 10, y + 12, platform.width + 20, renderHeight + 10, 14);
-  ctx.fill();
 
   if (platformImg) {
+    // Keep skin platforms clean without the larger dark slab behind them.
+    ctx.fillStyle = "rgba(27, 20, 36, 0.24)";
+    roundedRect(x + 6, y + 18, platform.width - 12, renderHeight - 8, 14);
+    ctx.fill();
+
     // Clip so platform skins don't spill outside the rounded shape.
     ctx.save();
     roundedRect(x, y, platform.width, renderHeight, 14);
@@ -2632,6 +2680,11 @@ function drawPlatform() {
     roundedRect(x + 12, y + 8, platform.width - 24, Math.max(10, renderHeight - 24), 10);
     ctx.fill();
   } else {
+    // Default platform keeps the chunkier stylized base shadow.
+    ctx.fillStyle = "#2b1d3d";
+    roundedRect(x - 10, y + 12, platform.width + 20, renderHeight + 10, 14);
+    ctx.fill();
+
     const wood = ctx.createLinearGradient(0, y, 0, y + platform.height);
     wood.addColorStop(0, "#ffcc8e");
     wood.addColorStop(0.6, "#f7a963");
