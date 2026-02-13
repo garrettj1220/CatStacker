@@ -919,6 +919,29 @@ canvas {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
+  body.game-running .buff-tray {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 64px;
+    margin-top: 0;
+    padding: 6px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 10px 22px rgba(22, 22, 26, 0.2);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    z-index: 40;
+  }
+  body.game-running .buff-chip {
+    min-height: 58px;
+  }
+  body.game-running .buff-chip-icon-wrap {
+    width: 30px;
+    height: 30px;
+  }
+  body.game-running .buff-chip-name {
+    font-size: 0.48rem;
+  }
   .buff-chip {
     padding: 4px;
     gap: 2px;
