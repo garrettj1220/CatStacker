@@ -2934,13 +2934,47 @@ function drawBorderFrame() {
   if (!borderItem) return;
   const frame = borderDefs.get(borderItem.key);
   if (!frame) return;
-  ctx.save();
-  ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
-  ctx.restore();
+  // Draw only edge bands from the border texture, never the center panel.
+  const band = clamp(Math.round(Math.min(canvas.width, canvas.height) * 0.075), 34, 56);
+  const fw = Math.max(1, frame.width);
+  const fh = Math.max(1, frame.height);
+  const sourceBandX = clamp(Math.round((band / canvas.width) * fw), 1, Math.floor(fw / 2));
+  const sourceBandY = clamp(Math.round((band / canvas.height) * fh), 1, Math.floor(fh / 2));
+  const centerSourceWidth = Math.max(1, fw - sourceBandX * 2);
+  const centerSourceHeight = Math.max(1, fh - sourceBandY * 2);
+  const centerDestWidth = Math.max(1, canvas.width - band * 2);
+  const centerDestHeight = Math.max(1, canvas.height - band * 2);
+
+  // Top and bottom bands
+  ctx.drawImage(frame, 0, 0, fw, sourceBandY, 0, 0, canvas.width, band);
+  ctx.drawImage(
+    frame,
+    0,
+    fh - sourceBandY,
+    fw,
+    sourceBandY,
+    0,
+    canvas.height - band,
+    canvas.width,
+    band
+  );
+
+  // Left and right bands (without corners to avoid over-thick corners)
+  ctx.drawImage(frame, 0, sourceBandY, sourceBandX, centerSourceHeight, 0, band, band, centerDestHeight);
+  ctx.drawImage(
+    frame,
+    fw - sourceBandX,
+    sourceBandY,
+    sourceBandX,
+    centerSourceHeight,
+    canvas.width - band,
+    band,
+    band,
+    centerDestHeight
+  );
 }
 
-function roundedRect(x, y, width, height, radius) {
-  ctx.beginPath();
+function appendRoundedRectPath(x, y, width, height, radius) {
   ctx.moveTo(x + radius, y);
   ctx.lineTo(x + width - radius, y);
   ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
@@ -2951,6 +2985,11 @@ function roundedRect(x, y, width, height, radius) {
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
   ctx.closePath();
+}
+
+function roundedRect(x, y, width, height, radius) {
+  ctx.beginPath();
+  appendRoundedRectPath(x, y, width, height, radius);
 }
 
 function drawStack() {
