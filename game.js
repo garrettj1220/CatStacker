@@ -2193,12 +2193,6 @@ function finalizeCat(cat) {
       return;
     }
   }
-  // Every successful placement regenerates 1 life (up to max).
-  if (state.hearts < state.maxHeartsThisLevel) {
-    state.hearts = Math.min(state.maxHeartsThisLevel, state.hearts + 1);
-    renderHearts();
-  }
-
   // Staying above 75% wobble for 10 placements grants one extra life,
   // but only while the player is currently below max hearts.
   if (state.hearts < state.maxHeartsThisLevel) {
@@ -2440,18 +2434,21 @@ function update(deltaRatio = 1, deltaMs = GAME_FRAME_DELTA_MS) {
     updateDropTimer(deltaMs, levelEffect);
   }
   state.cloudOffset = (state.cloudOffset + 0.25) % 400;
-  const runSpeed = Math.min(6, 1 + Math.floor(state.stack.length * 0.05));
-  for (let i = 0; i < runSpeed; i += 1) {
+  // Keep simulation pacing tied to frame delta, not stack height.
+  // This prevents sudden horizontal speed spikes late in a level.
+  const simulationSteps = Math.max(1, Math.ceil(deltaRatio));
+  const stepRatio = deltaRatio / simulationSteps;
+  for (let i = 0; i < simulationSteps; i += 1) {
     if (state.mode === "running") {
       const driftSpeed = updatePreview();
       if (driftSpeed) {
         const stepDelta = driftSpeed / PREVIEW_MOVEMENT_STEPS;
         for (let step = 0; step < PREVIEW_MOVEMENT_STEPS; step += 1) {
-          movePreviewStep(stepDelta * deltaRatio);
+          movePreviewStep(stepDelta * stepRatio);
         }
       }
       for (let sub = 0; sub < PHYSICS_SUBSTEPS; sub += 1) {
-        updateActiveCat(PHYSICS_DT * deltaRatio);
+        updateActiveCat(PHYSICS_DT * stepRatio);
       }
     }
   }
