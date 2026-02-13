@@ -1592,6 +1592,7 @@ function showMainMenu() {
   updateMenuBestScores();
   updateTopScoreDisplay();
   audioManager.onLevelChange(null);
+  document.body.classList.remove("game-running");
 }
 function hideMainMenu() {
   const menu = resolveMainMenu();
@@ -1612,6 +1613,7 @@ function startNewRun(mode) {
   state.pointsAwardedThisRun = false;
   updateTopScoreDisplay();
   hideMainMenu();
+  document.body.classList.add("game-running");
   state.paused = false;
   audioManager.unlockAudio();
   startGame();
@@ -1623,6 +1625,7 @@ function showShopPanel() {
     shopPanel.classList.remove("hidden");
   }
   document.body.classList.add("shop-open");
+  document.body.classList.remove("game-running");
   updateShopPointsDisplay();
   setActiveShopCategory(state.activeShopCategory || "platforms");
   audioManager.unlockAudio();
@@ -1637,6 +1640,7 @@ function closeShopPanel() {
     updateTopScoreDisplay();
     updateShopPointsDisplay();
   }
+  document.body.classList.remove("game-running");
 }
 function restartCheckpointLevel() {
   overlay && overlay.classList.add("hidden");
@@ -2837,6 +2841,27 @@ function handleFogCatDrop() {
   }
 }
 
+function handleCanvasPrimaryAction(event) {
+  if (event && typeof event.button === "number" && event.button !== 0) return;
+  if (state.mode === "start" || state.paused) return;
+  audioManager.unlockAudio();
+  if (state.mode === "running") {
+    event && event.preventDefault();
+    attemptDrop();
+    return;
+  }
+  if (state.mode === "gameover") {
+    event && event.preventDefault();
+    if (state.gameMode === "checkpoint") restartCheckpointLevel();
+    else startNewRun("survival");
+    return;
+  }
+  if (state.mode === "victory") {
+    event && event.preventDefault();
+    startNewRun(state.gameMode);
+  }
+}
+
 function drawFog() {
   const opacity = state.fogOpacity * getFogOpacityModifier();
   if (opacity <= 0) return;
@@ -3382,6 +3407,11 @@ document.addEventListener("keydown", (event) => {
     toggleFullscreen();
   }
 });
+
+canvas &&
+  canvas.addEventListener("pointerdown", (event) => {
+    handleCanvasPrimaryAction(event);
+  });
 
 function screenToWorldX(screenX) {
   const zoom = state.cameraZoom || 1;
