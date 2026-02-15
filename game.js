@@ -42,6 +42,11 @@ const shopPopup = document.getElementById("shop-popup");
 const shopPopupImage = document.getElementById("shop-popup-image");
 const shopPopupText = document.getElementById("shop-popup-text");
 const shopPopupClose = document.querySelector(".shop-popup-close");
+const authGate = document.getElementById("auth-gate");
+const authGateStatus = document.getElementById("auth-gate-status");
+const authLoginLink = document.getElementById("auth-login-link");
+const authSignupLink = document.getElementById("auth-signup-link");
+const leaderboardList = document.getElementById("leaderboard-list");
 const audioToggleButton = document.getElementById("audio-toggle");
 const audioToggleIcon = document.getElementById("audio-toggle-icon");
 const windIndicator = document.getElementById("wind-indicator");
@@ -66,6 +71,11 @@ const gameOverMainMenu = document.getElementById("game-over-main-menu");
 const bonusBurst = document.getElementById("bonus-burst");
 const buffTray = document.getElementById("buff-tray");
 const PERSONAL_BEST_KEY = "catstacker-personal-best";
+const SHARED_API_BASE = (window.STUDIOJPG_API_BASE || "https://api.studiojpg.co").replace(/\/$/, "");
+const AUTH_ME_ENDPOINT = `${SHARED_API_BASE}/api/auth/me`;
+const CATSTACKER_PROFILE_ENDPOINT = `${SHARED_API_BASE}/api/catstacker/profile`;
+const CATSTACKER_RUNS_ENDPOINT = `${SHARED_API_BASE}/api/catstacker/survival-runs`;
+const CATSTACKER_LEADERBOARD_ENDPOINT = `${SHARED_API_BASE}/api/catstacker/leaderboard`;
 
 const CAT_NAMES = [
   "Cat1.png",
@@ -668,20 +678,224 @@ const state = {
   pointsAwardedThisRun: false
 };
 
-let bestSurvivalScore = loadBestScore(BEST_SURVIVAL_KEY);
-let bestCheckpointScore = loadBestScore(BEST_CHECKPOINT_KEY);
-let shopPoints = loadShopPoints();
-const purchasedPlatforms = loadPurchasedPlatforms();
-const purchasedBorders = loadPurchasedBorders();
-const buffInventory = loadBuffInventory();
+let bestSurvivalScore = 0;
+let bestCheckpointScore = 0;
+let shopPoints = 0;
+const purchasedPlatforms = new Set();
+const purchasedBorders = new Set();
+const buffInventory = Object.fromEntries(BUFF_ITEMS.map((item) => [item.key, 0]));
 const buffBuyQuantities = Object.fromEntries(BUFF_ITEMS.map((item) => [item.key, 1]));
-let equippedPlatformKey = loadEquippedPlatform();
-let equippedBorderKey = loadEquippedBorder();
-state.topScore = loadPersonalBest();
+let equippedPlatformKey = DEFAULT_PLATFORM_KEY;
+let equippedBorderKey = DEFAULT_BORDER_KEY;
+state.topScore = 0;
+let authUser = null;
+let isAuthReady = false;
+let profileSyncTimer = null;
+let profileSyncInFlight = false;
+let hasLoadedRemoteProfile = false;
+let legacyProfileSnapshot = null;
 updateTopScoreDisplay();
 updateShopPointsDisplay();
 updateMenuPlatformPreview();
 renderBuffTray();
+
+function apiUrlWithParams(base, params) {
+  const url = new URL(base);
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value === null || value === undefined) return;
+    url.searchParams.set(key, String(value));
+  });
+  return url.toString();
+}
+
+async function apiFetchJSON(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    },
+    ...options
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(text || `Request failed (${response.status})`);
+  }
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+function setAuthGateVisible(visible, statusText = "") {
+  if (!authGate) return;
+  authGate.classList.toggle("hidden", !visible);
+  if (authGateStatus && statusText) {
+    authGateStatus.textContent = statusText;
+  }
+}
+
+function updateAuthLinks() {
+  const returnTo = encodeURIComponent(window.location.href);
+  if (authLoginLink) authLoginLink.href = `${SHARED_API_BASE}/login?return_to=${returnTo}`;
+  if (authSignupLink) authSignupLink.href = `${SHARED_API_BASE}/signup?return_to=${returnTo}`;
+}
+
+function replaceSet(target, values) {
+  target.clear();
+  (values || []).forEach((value) => target.add(String(value)));
+}
+
+function buildCurrentProfilePayload() {
+  return {
+    best_survival_score: Math.max(0, Number(bestSurvivalScore) || 0),
+    best_checkpoint_score: Math.max(0, Number(bestCheckpointScore) || 0),
+    top_score: Math.max(0, Number(state.topScore) || 0),
+    shop_points: Math.max(0, Number(shopPoints) || 0),
+    purchased_platforms: [...purchasedPlatforms],
+    purchased_borders: [...purchasedBorders],
+    buff_inventory: { ...buffInventory },
+    equipped_platform_key: equippedPlatformKey || DEFAULT_PLATFORM_KEY,
+    equipped_border_key: equippedBorderKey || DEFAULT_BORDER_KEY
+  };
+}
+
+function applyRemoteProfile(profile = {}) {
+  bestSurvivalScore = Math.max(0, Number(profile.best_survival_score) || 0);
+  bestCheckpointScore = Math.max(0, Number(profile.best_checkpoint_score) || 0);
+  state.topScore = Math.max(0, Number(profile.top_score) || 0);
+  shopPoints = Math.max(0, Number(profile.shop_points) || 0);
+  replaceSet(purchasedPlatforms, profile.purchased_platforms);
+  replaceSet(purchasedBorders, profile.purchased_borders);
+  BUFF_ITEMS.forEach((item) => {
+    const raw = profile.buff_inventory && profile.buff_inventory[item.key];
+    buffInventory[item.key] = Number.isFinite(Number(raw))
+      ? clamp(Math.floor(Number(raw)), 0, BUFF_MAX_OWNED)
+      : 0;
+  });
+  equippedPlatformKey = canEquipPlatform(profile.equipped_platform_key)
+    ? profile.equipped_platform_key || DEFAULT_PLATFORM_KEY
+    : DEFAULT_PLATFORM_KEY;
+  equippedBorderKey = canEquipBorder(profile.equipped_border_key)
+    ? profile.equipped_border_key || DEFAULT_BORDER_KEY
+    : DEFAULT_BORDER_KEY;
+  updateTopScoreDisplay();
+  updateShopPointsDisplay();
+  updateMenuPlatformPreview();
+  updateMenuBestScores();
+  renderBuffTray();
+  renderHearts();
+}
+
+async function loadLeaderboard(limit = 10) {
+  if (!leaderboardList) return;
+  try {
+    const payload = await apiFetchJSON(apiUrlWithParams(CATSTACKER_LEADERBOARD_ENDPOINT, { limit }));
+    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+    leaderboardList.innerHTML = "";
+    if (!rows.length) {
+      const li = document.createElement("li");
+      li.className = "leaderboard-empty";
+      li.textContent = "No runs yet.";
+      leaderboardList.appendChild(li);
+      return;
+    }
+    rows.forEach((row) => {
+      const li = document.createElement("li");
+      li.className = "leaderboard-row";
+      const name = row.username_snapshot || "Player";
+      const score = Number(row.score) || 0;
+      const level = Number(row.level) || 1;
+      const cats = Number(row.cats_stacked_total) || 0;
+      li.textContent = `${name} - ${score} pts - L${level} - ${cats} cats`;
+      leaderboardList.appendChild(li);
+    });
+  } catch (error) {
+    leaderboardList.innerHTML = "";
+    const li = document.createElement("li");
+    li.className = "leaderboard-empty";
+    li.textContent = "Leaderboard unavailable.";
+    leaderboardList.appendChild(li);
+  }
+}
+
+function scheduleProfileSync() {
+  if (!isAuthReady || !authUser || !hasLoadedRemoteProfile) return;
+  if (profileSyncTimer) clearTimeout(profileSyncTimer);
+  profileSyncTimer = window.setTimeout(() => {
+    syncProfileNow().catch(() => {});
+  }, 350);
+}
+
+async function syncProfileNow() {
+  if (!isAuthReady || !authUser || profileSyncInFlight) return;
+  profileSyncInFlight = true;
+  try {
+    await apiFetchJSON(CATSTACKER_PROFILE_ENDPOINT, {
+      method: "PUT",
+      body: JSON.stringify({
+        profile: buildCurrentProfilePayload(),
+        username_snapshot: authUser.username || null
+      })
+    });
+  } finally {
+    profileSyncInFlight = false;
+  }
+}
+
+async function submitSurvivalRunIfEligible(score, level, catsStackedTotal) {
+  if (!isAuthReady || !authUser) return;
+  if (state.gameMode !== "survival") return;
+  if (!Number.isFinite(score) || score <= 0) return;
+  try {
+    await apiFetchJSON(CATSTACKER_RUNS_ENDPOINT, {
+      method: "POST",
+      body: JSON.stringify({
+        score: Math.max(0, Math.floor(score)),
+        level: Math.max(1, Math.floor(level)),
+        cats_stacked_total: Math.max(0, Math.floor(catsStackedTotal))
+      })
+    });
+    await loadLeaderboard(10);
+  } catch (error) {
+    // Non-fatal: gameplay should not break if run submission fails.
+  }
+}
+
+async function initializeAuthenticatedProfile() {
+  const payload = await apiFetchJSON(CATSTACKER_PROFILE_ENDPOINT);
+  const profile = payload?.profile || {};
+  const exists = !!payload?.exists;
+  if (!exists && legacyProfileSnapshot?.has_data) {
+    applyRemoteProfile(legacyProfileSnapshot.profile);
+    await syncProfileNow();
+  } else {
+    applyRemoteProfile(profile);
+  }
+  hasLoadedRemoteProfile = true;
+}
+
+async function bootstrapAuthAndGame() {
+  updateAuthLinks();
+  legacyProfileSnapshot = readLegacyProfileFromLocalStorage();
+  setAuthGateVisible(true, "Checking your StudioJPG session...");
+  try {
+    const me = await apiFetchJSON(AUTH_ME_ENDPOINT);
+    authUser = me?.user || me;
+    if (!authUser?.user_id && !authUser?.id) {
+      throw new Error("Invalid user payload from auth service.");
+    }
+    isAuthReady = true;
+    await initializeAuthenticatedProfile();
+    setAuthGateVisible(false);
+    await loadLeaderboard(10);
+    await loadAssets();
+  } catch (error) {
+    isAuthReady = false;
+    setAuthGateVisible(
+      true,
+      "You need to sign in to play CatStacker and sync scores across StudioJPG."
+    );
+  }
+}
 function loadBestScore(key) {
   try {
     const raw = window.localStorage.getItem(key);
@@ -695,11 +909,12 @@ function loadBestScore(key) {
   return 0;
 }
 function saveBestScore(key, value) {
-  try {
-    window.localStorage.setItem(key, String(value));
-  } catch (error) {
-    // ignore
+  if (key === BEST_SURVIVAL_KEY) {
+    bestSurvivalScore = Math.max(0, Number(value) || 0);
+  } else if (key === BEST_CHECKPOINT_KEY) {
+    bestCheckpointScore = Math.max(0, Number(value) || 0);
   }
+  scheduleProfileSync();
 }
 function loadShopPoints() {
   try {
@@ -714,11 +929,7 @@ function loadShopPoints() {
   return 0;
 }
 function saveShopPoints() {
-  try {
-    window.localStorage.setItem(SHOP_POINTS_KEY, String(shopPoints));
-  } catch (error) {
-    // ignore
-  }
+  scheduleProfileSync();
 }
 
 function loadBuffInventory() {
@@ -742,11 +953,7 @@ function loadBuffInventory() {
 }
 
 function saveBuffInventory() {
-  try {
-    window.localStorage.setItem(SHOP_BUFFS_KEY, JSON.stringify(buffInventory));
-  } catch (error) {
-    // ignore
-  }
+  scheduleProfileSync();
 }
 
 function loadEquippedPlatform() {
@@ -761,11 +968,7 @@ function loadEquippedPlatform() {
 }
 
 function saveEquippedPlatform() {
-  try {
-    window.localStorage.setItem(EQUIPPED_PLATFORM_KEY, String(equippedPlatformKey));
-  } catch (error) {
-    // ignore
-  }
+  scheduleProfileSync();
 }
 
 function loadEquippedBorder() {
@@ -780,11 +983,7 @@ function loadEquippedBorder() {
 }
 
 function saveEquippedBorder() {
-  try {
-    window.localStorage.setItem(EQUIPPED_BORDER_KEY, String(equippedBorderKey));
-  } catch (error) {
-    // ignore
-  }
+  scheduleProfileSync();
 }
 function updateShopPointsDisplay() {
   if (shopPointsValue) {
@@ -865,11 +1064,7 @@ function loadPurchasedPlatforms() {
   return new Set();
 }
 function savePurchasedPlatforms() {
-  try {
-    window.localStorage.setItem(SHOP_PURCHASES_KEY, JSON.stringify([...purchasedPlatforms]));
-  } catch (error) {
-    // ignore
-  }
+  scheduleProfileSync();
 }
 
 function loadPurchasedBorders() {
@@ -886,11 +1081,7 @@ function loadPurchasedBorders() {
 }
 
 function savePurchasedBorders() {
-  try {
-    window.localStorage.setItem(SHOP_BORDER_PURCHASES_KEY, JSON.stringify([...purchasedBorders]));
-  } catch (error) {
-    // ignore
-  }
+  scheduleProfileSync();
 }
 
 function loadAudioMuted() {
@@ -908,6 +1099,31 @@ function saveAudioMuted() {
   } catch (error) {
     // ignore
   }
+}
+
+function readLegacyProfileFromLocalStorage() {
+  const profile = {
+    best_survival_score: loadBestScore(BEST_SURVIVAL_KEY),
+    best_checkpoint_score: loadBestScore(BEST_CHECKPOINT_KEY),
+    top_score: loadPersonalBest(),
+    shop_points: loadShopPoints(),
+    purchased_platforms: [...loadPurchasedPlatforms()],
+    purchased_borders: [...loadPurchasedBorders()],
+    buff_inventory: loadBuffInventory(),
+    equipped_platform_key: loadEquippedPlatform(),
+    equipped_border_key: loadEquippedBorder()
+  };
+  const hasData =
+    profile.best_survival_score > 0 ||
+    profile.best_checkpoint_score > 0 ||
+    profile.top_score > 0 ||
+    profile.shop_points > 0 ||
+    profile.purchased_platforms.length > 0 ||
+    profile.purchased_borders.length > 0 ||
+    Object.values(profile.buff_inventory).some((v) => Number(v) > 0) ||
+    profile.equipped_platform_key !== DEFAULT_PLATFORM_KEY ||
+    profile.equipped_border_key !== DEFAULT_BORDER_KEY;
+  return { has_data: hasData, profile };
 }
 
 let audioMuted = loadAudioMuted();
@@ -1591,6 +1807,7 @@ function showMainMenu() {
   renderBuffTray();
   updateMenuBestScores();
   updateTopScoreDisplay();
+  loadLeaderboard(10);
   audioManager.onLevelChange(null);
   document.body.classList.remove("game-running");
 }
@@ -1678,11 +1895,8 @@ function loadPersonalBest() {
 }
 
 function savePersonalBest(value) {
-  try {
-    window.localStorage.setItem(PERSONAL_BEST_KEY, String(value));
-  } catch (error) {
-    // ignore
-  }
+  state.topScore = Math.max(0, Number(value) || 0);
+  scheduleProfileSync();
 }
 
 function updateTopScoreDisplay() {
@@ -2357,6 +2571,7 @@ function endRun() {
   finalScore.textContent = state.score;
   finalLevel.textContent = state.currentLevel + 1;
   recordModeBest(state.score);
+  submitSurvivalRunIfEligible(state.score, state.currentLevel + 1, state.stack.length);
   showGameOverPanel();
   state.paused = false;
   overlay.classList.remove("hidden");
@@ -3618,4 +3833,4 @@ function bounceMissedCat(cat) {
   }
 }
 
-loadAssets();
+bootstrapAuthAndGame();
