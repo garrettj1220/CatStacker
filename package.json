@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "http-server -p 4173 -c-1"
+    "start": "http-server -p 4173 -c-1",
+    "build": "echo \"No build step for CatStacker\""
   },
   "devDependencies": {
     "http-server": "^14.1.1"
