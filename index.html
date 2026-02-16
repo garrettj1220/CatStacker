@@ -40,6 +40,7 @@
           <button id="audio-toggle" class="audio-toggle" type="button" aria-label="Toggle audio" aria-pressed="false">
             <img id="audio-toggle-icon" src="Art/Icons/volume-on.svg" alt="" />
           </button>
+          <p id="menu-user-pill" class="menu-user-pill hidden"></p>
           <section class="menu-left">
             <div class="main-menu-headline">
               <h1>CatStacker</h1>
@@ -58,12 +59,7 @@
               <p>Best Checkpoint Run Score: <span id="best-checkpoint-score">0</span></p>
             </div>
             <p id="auth-status-line" class="auth-status-line hidden"></p>
-            <div class="leaderboard-panel">
-              <h3>Global Survival Leaderboard</h3>
-              <ol id="leaderboard-list" class="leaderboard-list">
-                <li class="leaderboard-empty">Loading leaderboard...</li>
-              </ol>
-            </div>
+            <button id="leaderboard-open" class="leaderboard-open-btn" type="button">Leaderboard</button>
             <p class="menu-credit">By GarrettJPG</p>
           </section>
           <section class="menu-right" aria-hidden="true">
@@ -121,6 +117,25 @@
           <button class="shop-popup-close" type="button">✕</button>
           <img id="shop-popup-image" alt="Platform unlocked" />
           <p id="shop-popup-text">Unlocked</p>
+        </div>
+      </div>
+      <div id="leaderboard-modal" class="leaderboard-modal hidden">
+        <div class="leaderboard-modal-panel">
+          <h2>Global Survival Leaderboard</h2>
+          <p class="leaderboard-modal-subtitle">Top 10 runs across all players</p>
+          <div class="leaderboard-modal-head">
+            <span>#</span>
+            <span>Player</span>
+            <span>Score</span>
+            <span>Level</span>
+            <span>Cats</span>
+          </div>
+          <ol id="leaderboard-modal-list" class="leaderboard-modal-list">
+            <li class="leaderboard-empty">Loading leaderboard...</li>
+          </ol>
+          <div class="leaderboard-modal-actions">
+            <button id="leaderboard-back" type="button">Back</button>
+          </div>
         </div>
       </div>
       <div id="level-overlay" class="level-overlay hidden">

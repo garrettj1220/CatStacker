@@ -43,7 +43,11 @@ const shopPopupImage = document.getElementById("shop-popup-image");
 const shopPopupText = document.getElementById("shop-popup-text");
 const shopPopupClose = document.querySelector(".shop-popup-close");
 const authStatusLine = document.getElementById("auth-status-line");
-const leaderboardList = document.getElementById("leaderboard-list");
+const menuUserPill = document.getElementById("menu-user-pill");
+const leaderboardOpenButton = document.getElementById("leaderboard-open");
+const leaderboardModal = document.getElementById("leaderboard-modal");
+const leaderboardBackButton = document.getElementById("leaderboard-back");
+const leaderboardModalList = document.getElementById("leaderboard-modal-list");
 const audioToggleButton = document.getElementById("audio-toggle");
 const audioToggleIcon = document.getElementById("audio-toggle-icon");
 const windIndicator = document.getElementById("wind-indicator");
@@ -691,6 +695,7 @@ let profileSyncTimer = null;
 let profileSyncInFlight = false;
 let hasLoadedRemoteProfile = false;
 let legacyProfileSnapshot = null;
+let latestLeaderboardRows = [];
 updateTopScoreDisplay();
 updateShopPointsDisplay();
 updateMenuPlatformPreview();
@@ -733,6 +738,68 @@ function setAuthStatus(text = "", warning = false) {
   authStatusLine.textContent = text;
   authStatusLine.classList.remove("hidden");
   authStatusLine.classList.toggle("is-warning", !!warning);
+}
+
+function setMenuUserPill(username = "") {
+  if (!menuUserPill) return;
+  const name = String(username || "").trim();
+  if (!name) {
+    menuUserPill.textContent = "";
+    menuUserPill.classList.add("hidden");
+    return;
+  }
+  menuUserPill.textContent = `@${name}`;
+  menuUserPill.classList.remove("hidden");
+}
+
+function renderLeaderboardRows(rows = [], emptyText = "No runs yet.") {
+  if (!leaderboardModalList) return;
+  leaderboardModalList.innerHTML = "";
+  if (!rows.length) {
+    const li = document.createElement("li");
+    li.className = "leaderboard-empty";
+    li.textContent = emptyText;
+    leaderboardModalList.appendChild(li);
+    return;
+  }
+
+  rows.forEach((row, index) => {
+    const li = document.createElement("li");
+    li.className = "leaderboard-modal-row";
+
+    const rank = document.createElement("span");
+    rank.className = "leaderboard-cell-rank";
+    rank.textContent = `#${index + 1}`;
+
+    const name = document.createElement("span");
+    name.className = "leaderboard-cell-name";
+    name.textContent = String(row.username_snapshot || "Player");
+
+    const score = document.createElement("span");
+    score.className = "leaderboard-cell-score";
+    score.textContent = `${Math.max(0, Number(row.score) || 0)}`;
+
+    const level = document.createElement("span");
+    level.className = "leaderboard-cell-level";
+    level.textContent = `L${Math.max(1, Number(row.level) || 1)}`;
+
+    const cats = document.createElement("span");
+    cats.className = "leaderboard-cell-cats";
+    cats.textContent = `${Math.max(0, Number(row.cats_stacked_total) || 0)}`;
+
+    li.append(rank, name, score, level, cats);
+    leaderboardModalList.appendChild(li);
+  });
+}
+
+function openLeaderboardModal() {
+  if (!leaderboardModal) return;
+  leaderboardModal.classList.remove("hidden");
+}
+
+function closeLeaderboardModal() {
+  if (!leaderboardModal) return;
+  leaderboardModal.classList.add("hidden");
 }
 
 function replaceSet(target, values) {
@@ -782,34 +849,14 @@ function applyRemoteProfile(profile = {}) {
 }
 
 async function loadLeaderboard(limit = 10) {
-  if (!leaderboardList) return;
   try {
     const payload = await apiFetchJSON(apiUrlWithParams(CATSTACKER_LEADERBOARD_ENDPOINT, { limit }));
-    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
-    leaderboardList.innerHTML = "";
-    if (!rows.length) {
-      const li = document.createElement("li");
-      li.className = "leaderboard-empty";
-      li.textContent = "No runs yet.";
-      leaderboardList.appendChild(li);
-      return;
-    }
-    rows.forEach((row) => {
-      const li = document.createElement("li");
-      li.className = "leaderboard-row";
-      const name = row.username_snapshot || "Player";
-      const score = Number(row.score) || 0;
-      const level = Number(row.level) || 1;
-      const cats = Number(row.cats_stacked_total) || 0;
-      li.textContent = `${name} - ${score} pts - L${level} - ${cats} cats`;
-      leaderboardList.appendChild(li);
-    });
+    const rows = Array.isArray(payload?.rows) ? payload.rows.slice(0, limit) : [];
+    latestLeaderboardRows = rows;
+    renderLeaderboardRows(rows);
   } catch (error) {
-    leaderboardList.innerHTML = "";
-    const li = document.createElement("li");
-    li.className = "leaderboard-empty";
-    li.textContent = "Leaderboard unavailable.";
-    leaderboardList.appendChild(li);
+    latestLeaderboardRows = [];
+    renderLeaderboardRows([], "Leaderboard unavailable.");
   }
 }
 
@@ -872,12 +919,14 @@ async function initializeAuthenticatedProfile() {
 async function bootstrapAuthAndGame() {
   legacyProfileSnapshot = readLegacyProfileFromLocalStorage();
   setAuthStatus("Checking account sync...");
+  renderLeaderboardRows([], "Loading leaderboard...");
   try {
     const me = await apiFetchJSON(AUTH_ME_ENDPOINT);
     authUser = me?.user || me;
     if (!authUser?.user_id && !authUser?.id) {
       throw new Error("Invalid user payload from auth service.");
     }
+    setMenuUserPill(authUser.username || authUser.handle || "");
     isAuthReady = true;
     await initializeAuthenticatedProfile();
     setAuthStatus("");
@@ -885,6 +934,7 @@ async function bootstrapAuthAndGame() {
   } catch (error) {
     isAuthReady = false;
     authUser = null;
+    setMenuUserPill("");
     hasLoadedRemoteProfile = false;
     setAuthStatus("You are not logged in right now. Progress sync is unavailable.", true);
     loadLeaderboard(10);
@@ -1780,6 +1830,7 @@ function hideShopPanelOnly() {
 
 function showMainMenu() {
   hideShopPanelOnly();
+  closeLeaderboardModal();
   const menu = resolveMainMenu();
   menu && menu.classList.remove("hidden");
   overlay && overlay.classList.add("hidden");
@@ -1807,6 +1858,7 @@ function showMainMenu() {
   document.body.classList.remove("game-running");
 }
 function hideMainMenu() {
+  closeLeaderboardModal();
   const menu = resolveMainMenu();
   menu && menu.classList.add("hidden");
 }
@@ -3633,6 +3685,11 @@ function screenToWorldY(screenY) {
 }
 
 document.addEventListener("keydown", (event) => {
+  if (event.code === "Escape" && leaderboardModal && !leaderboardModal.classList.contains("hidden")) {
+    event.preventDefault();
+    closeLeaderboardModal();
+    return;
+  }
   if (event.code === "Space") {
     event.preventDefault();
     if (state.mode === "gameover") {
@@ -3690,6 +3747,30 @@ if (document.readyState === "loading") {
 } else {
   setupMainMenuModeHandlers();
 }
+leaderboardOpenButton &&
+  leaderboardOpenButton.addEventListener("click", async (event) => {
+    event.preventDefault();
+    audioManager.unlockAudio();
+    audioManager.click();
+    openLeaderboardModal();
+    if (!latestLeaderboardRows.length) {
+      renderLeaderboardRows([], "Loading leaderboard...");
+    }
+    await loadLeaderboard(10);
+  });
+leaderboardBackButton &&
+  leaderboardBackButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    audioManager.unlockAudio();
+    audioManager.click();
+    closeLeaderboardModal();
+  });
+leaderboardModal &&
+  leaderboardModal.addEventListener("click", (event) => {
+    if (event.target === leaderboardModal) {
+      closeLeaderboardModal();
+    }
+  });
 shopButton &&
   shopButton.addEventListener("click", (event) => {
     event.preventDefault();
