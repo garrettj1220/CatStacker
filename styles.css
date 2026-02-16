@@ -14,50 +14,6 @@ body {
 body.game-running {
   overflow: hidden;
 }
-.auth-gate {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  display: grid;
-  place-items: center;
-  background: rgba(10, 10, 20, 0.7);
-  backdrop-filter: blur(8px);
-}
-.auth-gate-panel {
-  width: min(460px, 92vw);
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 18px;
-  padding: 26px 22px;
-  box-shadow: 0 20px 50px rgba(15, 10, 30, 0.32);
-  text-align: center;
-}
-.auth-gate-panel h1 {
-  margin-bottom: 8px;
-  font-size: 1.8rem;
-  font-family: "Fraunces", "Space Grotesk", serif;
-}
-.auth-gate-panel p {
-  color: #352f45;
-  margin-bottom: 16px;
-}
-.auth-gate-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 130px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  background: linear-gradient(120deg, #ff7c59, #fcd34d);
-  color: #291111;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-decoration: none;
-}
-.auth-gate-btn-secondary {
-  background: rgba(15, 23, 42, 0.1);
-  color: #241350;
-}
 main {
   display: flex;
   align-items: center;
@@ -498,6 +454,14 @@ canvas {
 }
 .menu-left .best-scores {
   max-width: 520px;
+}
+.auth-status-line {
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: #6b5f84;
+}
+.auth-status-line.is-warning {
+  color: #8a3f4b;
 }
 .leaderboard-panel {
   margin-top: 10px;

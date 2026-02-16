@@ -42,10 +42,7 @@ const shopPopup = document.getElementById("shop-popup");
 const shopPopupImage = document.getElementById("shop-popup-image");
 const shopPopupText = document.getElementById("shop-popup-text");
 const shopPopupClose = document.querySelector(".shop-popup-close");
-const authGate = document.getElementById("auth-gate");
-const authGateStatus = document.getElementById("auth-gate-status");
-const authLoginLink = document.getElementById("auth-login-link");
-const authSignupLink = document.getElementById("auth-signup-link");
+const authStatusLine = document.getElementById("auth-status-line");
 const leaderboardList = document.getElementById("leaderboard-list");
 const audioToggleButton = document.getElementById("audio-toggle");
 const audioToggleIcon = document.getElementById("audio-toggle-icon");
@@ -725,18 +722,17 @@ async function apiFetchJSON(url, options = {}) {
   return response.json();
 }
 
-function setAuthGateVisible(visible, statusText = "") {
-  if (!authGate) return;
-  authGate.classList.toggle("hidden", !visible);
-  if (authGateStatus && statusText) {
-    authGateStatus.textContent = statusText;
+function setAuthStatus(text = "", warning = false) {
+  if (!authStatusLine) return;
+  if (!text) {
+    authStatusLine.classList.add("hidden");
+    authStatusLine.classList.remove("is-warning");
+    authStatusLine.textContent = "";
+    return;
   }
-}
-
-function updateAuthLinks() {
-  const returnTo = encodeURIComponent(window.location.href);
-  if (authLoginLink) authLoginLink.href = `${SHARED_API_BASE}/login?return_to=${returnTo}`;
-  if (authSignupLink) authSignupLink.href = `${SHARED_API_BASE}/signup?return_to=${returnTo}`;
+  authStatusLine.textContent = text;
+  authStatusLine.classList.remove("hidden");
+  authStatusLine.classList.toggle("is-warning", !!warning);
 }
 
 function replaceSet(target, values) {
@@ -874,9 +870,8 @@ async function initializeAuthenticatedProfile() {
 }
 
 async function bootstrapAuthAndGame() {
-  updateAuthLinks();
   legacyProfileSnapshot = readLegacyProfileFromLocalStorage();
-  setAuthGateVisible(true, "Checking your StudioJPG session...");
+  setAuthStatus("Checking account sync...");
   try {
     const me = await apiFetchJSON(AUTH_ME_ENDPOINT);
     authUser = me?.user || me;
@@ -885,16 +880,16 @@ async function bootstrapAuthAndGame() {
     }
     isAuthReady = true;
     await initializeAuthenticatedProfile();
-    setAuthGateVisible(false);
+    setAuthStatus("");
     await loadLeaderboard(10);
-    await loadAssets();
   } catch (error) {
     isAuthReady = false;
-    setAuthGateVisible(
-      true,
-      "You need to sign in to play CatStacker and sync scores across StudioJPG."
-    );
+    authUser = null;
+    hasLoadedRemoteProfile = false;
+    setAuthStatus("You are not logged in right now. Progress sync is unavailable.", true);
+    loadLeaderboard(10);
   }
+  await loadAssets();
 }
 function loadBestScore(key) {
   try {
