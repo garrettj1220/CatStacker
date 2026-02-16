@@ -43,11 +43,12 @@ const shopPopupImage = document.getElementById("shop-popup-image");
 const shopPopupText = document.getElementById("shop-popup-text");
 const shopPopupClose = document.querySelector(".shop-popup-close");
 const authStatusLine = document.getElementById("auth-status-line");
-const menuUserPill = document.getElementById("menu-user-pill");
-const leaderboardOpenButton = document.getElementById("leaderboard-open");
-const leaderboardModal = document.getElementById("leaderboard-modal");
-const leaderboardBackButton = document.getElementById("leaderboard-back");
-const leaderboardModalList = document.getElementById("leaderboard-modal-list");
+let menuUserPill = document.getElementById("menu-user-pill");
+let leaderboardOpenButton = document.getElementById("leaderboard-open");
+let leaderboardModal = document.getElementById("leaderboard-modal");
+let leaderboardBackButton = document.getElementById("leaderboard-back");
+let leaderboardModalList = document.getElementById("leaderboard-modal-list");
+const legacyLeaderboardList = document.getElementById("leaderboard-list");
 const audioToggleButton = document.getElementById("audio-toggle");
 const audioToggleIcon = document.getElementById("audio-toggle-icon");
 const windIndicator = document.getElementById("wind-indicator");
@@ -696,6 +697,8 @@ let profileSyncInFlight = false;
 let hasLoadedRemoteProfile = false;
 let legacyProfileSnapshot = null;
 let latestLeaderboardRows = [];
+ensureLeaderboardUI();
+setMenuUserPill("");
 updateTopScoreDisplay();
 updateShopPointsDisplay();
 updateMenuPlatformPreview();
@@ -740,16 +743,104 @@ function setAuthStatus(text = "", warning = false) {
   authStatusLine.classList.toggle("is-warning", !!warning);
 }
 
+function ensureMenuUserPill() {
+  if (menuUserPill) {
+    menuUserPill.style.position = "fixed";
+    menuUserPill.style.top = "24px";
+    menuUserPill.style.right = "78px";
+    menuUserPill.style.zIndex = "120";
+    return menuUserPill;
+  }
+  const host = document.querySelector(".main-menu-content");
+  if (!host) return null;
+  const pill = document.createElement("p");
+  pill.id = "menu-user-pill";
+  pill.className = "menu-user-pill";
+  host.appendChild(pill);
+  menuUserPill = pill;
+  // Inline fallback so this still places correctly if stale CSS is served.
+  menuUserPill.style.position = "fixed";
+  menuUserPill.style.top = "24px";
+  menuUserPill.style.right = "78px";
+  menuUserPill.style.zIndex = "120";
+  return pill;
+}
+
+function resolveAuthDisplayName(user) {
+  if (!user || typeof user !== "object") return "";
+  const candidates = [
+    user.username,
+    user.handle,
+    user.display_name,
+    user.name,
+    user.email ? String(user.email).split("@")[0] : "",
+    user.user_id ? `User ${String(user.user_id).slice(0, 8)}` : "",
+    user.id ? `User ${String(user.id).slice(0, 8)}` : ""
+  ];
+  const chosen = candidates.find((value) => String(value || "").trim());
+  return String(chosen || "").trim();
+}
+
 function setMenuUserPill(username = "") {
-  if (!menuUserPill) return;
+  const pill = ensureMenuUserPill();
+  if (!pill) return;
   const name = String(username || "").trim();
-  if (!name) {
-    menuUserPill.textContent = "";
-    menuUserPill.classList.add("hidden");
+  if (name) {
+    pill.textContent = `@${name}`;
+    pill.classList.remove("hidden");
     return;
   }
-  menuUserPill.textContent = `@${name}`;
-  menuUserPill.classList.remove("hidden");
+  pill.textContent = "Not logged in";
+  pill.classList.remove("hidden");
+}
+
+function ensureLeaderboardUI() {
+  const menuLeft = document.querySelector(".menu-left");
+  const legacyPanel = legacyLeaderboardList ? legacyLeaderboardList.closest(".leaderboard-panel") : null;
+  if (!leaderboardOpenButton && menuLeft) {
+    leaderboardOpenButton = document.createElement("button");
+    leaderboardOpenButton.id = "leaderboard-open";
+    leaderboardOpenButton.className = "leaderboard-open-btn";
+    leaderboardOpenButton.type = "button";
+    leaderboardOpenButton.textContent = "Leaderboard";
+    const credit = menuLeft.querySelector(".menu-credit");
+    if (credit) {
+      credit.before(leaderboardOpenButton);
+    } else {
+      menuLeft.appendChild(leaderboardOpenButton);
+    }
+  }
+  if (legacyPanel) {
+    legacyPanel.classList.add("hidden");
+  }
+  if (!leaderboardModal) {
+    const modal = document.createElement("div");
+    modal.id = "leaderboard-modal";
+    modal.className = "leaderboard-modal hidden";
+    modal.innerHTML = `
+      <div class="leaderboard-modal-panel">
+        <h2>Global Survival Leaderboard</h2>
+        <p class="leaderboard-modal-subtitle">Top 10 runs across all players</p>
+        <div class="leaderboard-modal-head">
+          <span>#</span>
+          <span>Player</span>
+          <span>Score</span>
+          <span>Level</span>
+          <span>Cats</span>
+        </div>
+        <ol id="leaderboard-modal-list" class="leaderboard-modal-list">
+          <li class="leaderboard-empty">Loading leaderboard...</li>
+        </ol>
+        <div class="leaderboard-modal-actions">
+          <button id="leaderboard-back" type="button">Back</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    leaderboardModal = modal;
+  }
+  leaderboardBackButton = leaderboardModal.querySelector("#leaderboard-back");
+  leaderboardModalList = leaderboardModal.querySelector("#leaderboard-modal-list");
 }
 
 function renderLeaderboardRows(rows = [], emptyText = "No runs yet.") {
@@ -926,7 +1017,7 @@ async function bootstrapAuthAndGame() {
     if (!authUser?.user_id && !authUser?.id) {
       throw new Error("Invalid user payload from auth service.");
     }
-    setMenuUserPill(authUser.username || authUser.handle || "");
+    setMenuUserPill(resolveAuthDisplayName(authUser));
     isAuthReady = true;
     await initializeAuthenticatedProfile();
     setAuthStatus("");
