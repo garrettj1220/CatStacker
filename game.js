@@ -634,6 +634,7 @@ const state = {
   levelStartScore: 0,
   levelStartRunPoints: 0,
   levelStartBonusPoints: 0,
+  levelStartCatsStackedTotal: 0,
   missOffsetRatio: DEFAULT_MISS_OFFSET_RATIO,
   lightningTimer: 0,
   nextLightning: Infinity,
@@ -669,6 +670,8 @@ const state = {
   activeShopCategory: "platforms",
   runPoints: 0,
   bonusPoints: 0,
+  totalCatsStackedRun: 0,
+  pointsSpentRun: 0,
   cleanStreak: 0,
   perfectChain: 0,
   stableWobbleStreak: 0,
@@ -827,6 +830,7 @@ function ensureLeaderboardUI() {
           <span>Score</span>
           <span>Level</span>
           <span>Cats</span>
+          <span>Spent</span>
         </div>
         <ol id="leaderboard-modal-list" class="leaderboard-modal-list">
           <li class="leaderboard-empty">Loading leaderboard...</li>
@@ -841,6 +845,12 @@ function ensureLeaderboardUI() {
   }
   leaderboardBackButton = leaderboardModal.querySelector("#leaderboard-back");
   leaderboardModalList = leaderboardModal.querySelector("#leaderboard-modal-list");
+  const modalHead = leaderboardModal.querySelector(".leaderboard-modal-head");
+  if (modalHead && modalHead.children.length < 6) {
+    const spentHeader = document.createElement("span");
+    spentHeader.textContent = "Spent";
+    modalHead.appendChild(spentHeader);
+  }
 }
 
 function renderLeaderboardRows(rows = [], emptyText = "No runs yet.") {
@@ -878,7 +888,11 @@ function renderLeaderboardRows(rows = [], emptyText = "No runs yet.") {
     cats.className = "leaderboard-cell-cats";
     cats.textContent = `${Math.max(0, Number(row.cats_stacked_total) || 0)}`;
 
-    li.append(rank, name, score, level, cats);
+    const spent = document.createElement("span");
+    spent.className = "leaderboard-cell-spent";
+    spent.textContent = `${Math.max(0, Number(row.points_spent) || 0)}`;
+
+    li.append(rank, name, score, level, cats, spent);
     leaderboardModalList.appendChild(li);
   });
 }
@@ -910,6 +924,14 @@ function buildCurrentProfilePayload() {
     equipped_platform_key: equippedPlatformKey || DEFAULT_PLATFORM_KEY,
     equipped_border_key: equippedBorderKey || DEFAULT_BORDER_KEY
   };
+}
+
+function trackBuffSpend(key) {
+  const item = getBuffItem(key);
+  if (!item) return;
+  const cost = Math.max(0, Number(item.cost) || 0);
+  if (cost <= 0) return;
+  state.pointsSpentRun += cost;
 }
 
 function applyRemoteProfile(profile = {}) {
@@ -975,7 +997,7 @@ async function syncProfileNow() {
   }
 }
 
-async function submitSurvivalRunIfEligible(score, level, catsStackedTotal) {
+async function submitSurvivalRunIfEligible(score, level, catsStackedTotal, pointsSpent) {
   if (!isAuthReady || !authUser) return;
   if (state.gameMode !== "survival") return;
   if (!Number.isFinite(score) || score <= 0) return;
@@ -985,7 +1007,8 @@ async function submitSurvivalRunIfEligible(score, level, catsStackedTotal) {
       body: JSON.stringify({
         score: Math.max(0, Math.floor(score)),
         level: Math.max(1, Math.floor(level)),
-        cats_stacked_total: Math.max(0, Math.floor(catsStackedTotal))
+        cats_stacked_total: Math.max(0, Math.floor(catsStackedTotal)),
+        points_spent: Math.max(0, Math.floor(pointsSpent))
       })
     });
     await loadLeaderboard(10);
@@ -1781,6 +1804,7 @@ function useBuff(key) {
   if (!item) return;
   if (key !== "catLife" && isBuffActive(key)) return;
   if (!consumeBuff(key)) return;
+  trackBuffSpend(key);
 
   audioManager.unlockAudio();
   audioManager.click();
@@ -1936,6 +1960,8 @@ function showMainMenu() {
   state.levelStartBonusPoints = 0;
   state.runPoints = 0;
   state.bonusPoints = 0;
+  state.totalCatsStackedRun = 0;
+  state.pointsSpentRun = 0;
   state.cleanStreak = 0;
   state.perfectChain = 0;
   state.stableWobbleStreak = 0;
@@ -1962,6 +1988,8 @@ function startNewRun(mode) {
   state.levelStartBonusPoints = 0;
   state.runPoints = 0;
   state.bonusPoints = 0;
+  state.totalCatsStackedRun = 0;
+  state.pointsSpentRun = 0;
   state.cleanStreak = 0;
   state.perfectChain = 0;
   state.stableWobbleStreak = 0;
@@ -2003,6 +2031,7 @@ function restartCheckpointLevel() {
   state.score = state.levelStartScore;
   state.runPoints = state.levelStartRunPoints;
   state.bonusPoints = state.levelStartBonusPoints;
+  state.totalCatsStackedRun = state.levelStartCatsStackedTotal;
   state.cleanStreak = 0;
   state.perfectChain = 0;
   state.stableWobbleStreak = 0;
@@ -2210,6 +2239,7 @@ function beginLevel(levelIndex, skipOverlay = false) {
   state.levelStartScore = state.sessionScore;
   state.levelStartRunPoints = state.runPoints;
   state.levelStartBonusPoints = state.bonusPoints;
+  state.levelStartCatsStackedTotal = state.totalCatsStackedRun;
   state.levelThreshold = 10 + safeIndex * 5;
   const levelConfig = getLevelConfig(safeIndex);
   const levelNumber = safeIndex + 1;
@@ -2357,6 +2387,7 @@ function placeInitialCat(name = CAT_NAMES[0]) {
     srcHeight: image ? metadata.srcHeight || image.height : CAT_HEIGHT
   };
   state.stack = [cat];
+  state.totalCatsStackedRun += 1;
   state.stackHeight = cat.height;
   state.centerOfGravity = canvas.width / 2;
   state.balanceOffset = 0;
@@ -2510,6 +2541,7 @@ function finalizeCat(cat) {
   placed.y = BASE_Y - (state.stackHeight + placed.height);
   placed.x = clampToPlatform(placed.x, placed.width);
   state.stack.push(placed);
+  state.totalCatsStackedRun += 1;
   state.stackHeight += placed.height;
   const center = placed.x + placed.width / 2;
   if (!state.centerOfGravity) {
@@ -2709,7 +2741,12 @@ function endRun() {
   finalScore.textContent = state.score;
   finalLevel.textContent = state.currentLevel + 1;
   recordModeBest(state.score);
-  submitSurvivalRunIfEligible(state.score, state.currentLevel + 1, state.stack.length);
+  submitSurvivalRunIfEligible(
+    state.score,
+    state.currentLevel + 1,
+    state.totalCatsStackedRun,
+    state.pointsSpentRun
+  );
   showGameOverPanel();
   state.paused = false;
   overlay.classList.remove("hidden");
